@@ -31,6 +31,7 @@
 #include "bladerunner/text_resource.h"
 
 #include "common/debug.h"
+#include "common/ustr.h"
 #include "common/rect.h"
 #include "common/util.h"
 
@@ -46,6 +47,7 @@ DialogueMenu::DialogueMenu(BladeRunnerEngine *vm) {
 	_screenY = 0;
 	_maxItemWidth = 0;
 	_fadeInItemIndex = 0;
+	_lineHeight = 9; // will be recomputed from font in show()
 }
 
 DialogueMenu::~DialogueMenu() {
@@ -76,6 +78,18 @@ bool DialogueMenu::show() {
 bool DialogueMenu::showAt(int x, int y) {
 	if (_isVisible) {
 		return false;
+	}
+
+	// Derive row height from the left-border shape (get(1)), which has a fixed
+	// pixel height baked into DIALOG.SHP. This ensures rows always fill
+	// exactly one shape height, eliminating any gap between repeated shapes.
+	// The font is rendered inside this height; if it is taller than the shape
+	// the text will still be legible (just slightly clipped at the bottom).
+	if (_shapes != nullptr && _shapes->get(1) != nullptr) {
+		_lineHeight = _shapes->get(1)->getHeight() + kLineHeightExtra;
+	} else if (_vm->getMainFont() != nullptr) {
+		_lineHeight = _vm->getMainFont()->getFontHeight() + 2;
+		if (_lineHeight < 9) _lineHeight = 9;
 	}
 
 	_isVisible = true;
@@ -113,7 +127,7 @@ bool DialogueMenu::addToList(int answer, bool done, int priorityPolite, int prio
 
 #if BLADERUNNER_ORIGINAL_BUGS
 // Original uses incorrect spelling for entry id 1020: DRAGONFLY JEWERLY
-	const Common::String &text = _textResource->getText(answer);
+	Common::U32String text = _textResource->getTextU32(answer);
 #else
 	const char *answerTextCP = _textResource->getText(answer);
 	if (_vm->_language == Common::EN_ANY && answer == 1020 && strcmp(answerTextCP, "DRAGONFLY JEWERLY") == 0) {
@@ -126,7 +140,7 @@ bool DialogueMenu::addToList(int answer, bool done, int priorityPolite, int prio
 		// The other official localizations do not have this issue.
 		answerTextCP = "C.C.S.R.";
 	}
-	const Common::String &text = answerTextCP;
+	Common::U32String text = Common::U32String(answerTextCP);
 #endif // BLADERUNNER_ORIGINAL_BUGS
 	if (text.empty() || text.size() >= 50) {
 		return false;
@@ -318,7 +332,7 @@ void DialogueMenu::tick(int x, int y) {
 		return;
 	}
 
-	int line = (y - (_screenY + kBorderSize)) / kLineHeight;
+	int line = (y - (_screenY + kBorderSize)) / _lineHeight;
 	line = CLIP(line, 0, _listSize - 1);
 
 	_selectedItemIndex = line;
@@ -361,7 +375,7 @@ void DialogueMenu::draw(Graphics::Surface &s) {
 	const int x1 = _screenX;
 	const int y1 = _screenY;
 	const int x2 = _screenX + kBorderSize + _maxItemWidth;
-	const int y2 = _screenY + kBorderSize + _listSize * kLineHeight;
+	const int y2 = _screenY + kBorderSize + _listSize * _lineHeight;
 
 	darkenRect(s, x1 + 8, y1 + 8, x2 + 2, y2 + 2);
 
@@ -384,9 +398,15 @@ void DialogueMenu::draw(Graphics::Surface &s) {
 	for (int i = 0; i != _listSize; ++i) {
 		_shapes->get(1)->draw(s, x1, y);
 		_shapes->get(4)->draw(s, x2, y);
+		// If kLineHeightExtra > 0, fill the strip below the border shape
+		// using darkenRect so no raw scene pixels show through the gap.
+		if (kLineHeightExtra > 0) {
+			const int shapeH = _shapes->get(1)->getHeight();
+			darkenRect(s, x1 + 1, y + shapeH, x2 - 1, y + _lineHeight);
+		}
 		uint32 color = s.format.RGBToColor((_items[i].colorIntensity / 2) * (256 / 32), (_items[i].colorIntensity / 2) * (256 / 32), _items[i].colorIntensity * (256 / 32));
-		_vm->_mainFont->drawString(&s, _items[i].text, x, y, s.w, color);
-		y += kLineHeight;
+		_vm->getMainFont()->drawString(&s, _items[i].text, x, y, s.w, color);
+		y += _lineHeight;
 	}
 	for (; x != x2; ++x) {
 		_shapes->get(6)->draw(s, x, y1);
@@ -411,12 +431,12 @@ const char *DialogueMenu::getText(int id) const {
 void DialogueMenu::calculatePosition(int unusedX, int unusedY) {
 	_maxItemWidth = 0;
 	for (int i = 0; i != _listSize; ++i) {
-		_maxItemWidth = MAX(_maxItemWidth, _vm->_mainFont->getStringWidth(_items[i].text));
+		_maxItemWidth = MAX(_maxItemWidth, _vm->getMainFont()->getStringWidth(_items[i].text));
 	}
 	_maxItemWidth += 2;
 
 	int w = kBorderSize + _shapes->get(4)->getWidth() + _maxItemWidth;
-	int h = kBorderSize + _shapes->get(7)->getHeight() + kLineHeight * _listSize;
+	int h = kBorderSize + _shapes->get(7)->getHeight() + _lineHeight * _listSize;
 
 	_screenX = _centerX - w / 2;
 	_screenY = _centerY - h / 2;
@@ -449,7 +469,7 @@ void DialogueMenu::save(SaveFileWriteStream &f) {
 		f.writeBool(_neverRepeatWasSelected[i]);
 	}
 	for (int i = 0; i < 10; ++i) {
-		f.writeStringSz(_items[i].text, 50);
+		f.writeStringSz(_items[i].text.encode(Common::kUtf8), 50); // encode U32String to UTF-8
 		f.writeInt(_items[i].answerValue);
 		f.writeInt(_items[i].colorIntensity);
 		f.writeInt(_items[i].priorityPolite);
@@ -509,7 +529,7 @@ void DialogueMenu::load(SaveFileReadStream &f) {
 #endif
 
 	for (int i = 0; i < 10; ++i) {
-		_items[i].text = f.readStringSz(50);
+		_items[i].text = Common::U32String(f.readStringSz(50), Common::kUtf8); // decode UTF-8 from save
 		_items[i].answerValue = f.readInt();
 		_items[i].colorIntensity = f.readInt();
 		_items[i].priorityPolite = f.readInt();

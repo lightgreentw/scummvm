@@ -38,6 +38,7 @@
 #include "bladerunner/ui/ui_scroll_box.h"
 
 #include "common/rect.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -59,7 +60,7 @@ KIASectionClues::KIASectionClues(BladeRunnerEngine *vm, ActorClues *clues) : KIA
 	_cluesScrollBox = new UIScrollBox(_vm, scrollBoxCallback, this, kClueCount, 1, false, Common::Rect(312, 172, 500, 376), Common::Rect(506, 160, 506, 394));
 	_uiContainer->add(_cluesScrollBox);
 
-	_filterScrollBox = new UIScrollBox(_vm, scrollBoxCallback, this, 128, 1, false, Common::Rect(142, 162, 291, 376), Common::Rect(120, 160, 120, 370));
+	_filterScrollBox = new UIScrollBox(_vm, scrollBoxCallback, this, 128, 1, false, Common::Rect(142, 162, 291, 376), Common::Rect(120, 160, 120, 370), 10); // lineHeightOverride: shape(9)+1px
 	_uiContainer->add(_filterScrollBox);
 
 	_assetTypeFilterCount = 4 + 1; // we have 4 asset types
@@ -119,48 +120,48 @@ void KIASectionClues::close() {
 void KIASectionClues::draw(Graphics::Surface &surface) {
 	_uiContainer->draw(surface);
 
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(0), 300, 162, surface.w, surface.format.RGBToColor(232, 240, 255));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(2), 440, 426, surface.w, surface.format.RGBToColor(80, 96, 136));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(1), 440, 442, surface.w, surface.format.RGBToColor(80, 96, 136));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(4), 440, 458, surface.w, surface.format.RGBToColor(80, 96, 136));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(0), 300, 162, surface.w, surface.format.RGBToColor(232, 240, 255));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(2), 440, 426, surface.w, surface.format.RGBToColor(80, 96, 136));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(1), 440, 442, surface.w, surface.format.RGBToColor(80, 96, 136));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(4), 440, 458, surface.w, surface.format.RGBToColor(80, 96, 136));
 
 	int clueId = _cluesScrollBox->getSelectedLineData();
 	if (clueId != -1) {
-		Common::String text;
+		Common::U32String text;
 
 		int actorId = _clues->getFromActorId(clueId);
 		if (actorId != -1) {
-			text = _vm->_textActorNames->getText(actorId);
+			text = _vm->_textActorNames->getTextU32(actorId);
 		} else {
-			text.clear();
+			text = Common::U32String();
 		}
-		_vm->_mainFont->drawString(&surface, text, 490, 426, surface.w, surface.format.RGBToColor(136, 168, 255));
+		_vm->getMainFont()->drawString(&surface, text, 490, 426, surface.w, surface.format.RGBToColor(136, 168, 255));
 
 		int crimeId = _vm->_crimesDatabase->getCrime(clueId);
 		if (crimeId != -1) {
-			text = _vm->_textCrimes->getText(crimeId);
+			text = _vm->_textCrimes->getTextU32(crimeId);
 		} else {
-			text.clear();
+			text = Common::U32String();
 		}
-		_vm->_mainFont->drawString(&surface, text, 490, 442, surface.w, surface.format.RGBToColor(136, 168, 255));
+		_vm->getMainFont()->drawString(&surface, text, 490, 442, surface.w, surface.format.RGBToColor(136, 168, 255));
 
 		int assetType = _vm->_crimesDatabase->getAssetType(clueId);
 		if (assetType != kClueTypeIntangible) {
-			text = _vm->_textClueTypes->getText(assetType);
+			text = _vm->_textClueTypes->getTextU32(assetType);
 		} else {
-			text.clear();
+			text = Common::U32String();
 		}
-		_vm->_mainFont->drawString(&surface, text, 490, 458, surface.w, surface.format.RGBToColor(136, 168, 255));
+		_vm->getMainFont()->drawString(&surface, text, 490, 458, surface.w, surface.format.RGBToColor(136, 168, 255));
 	}
 
 	_buttons->draw(surface);
 	_buttons->drawTooltip(surface, _mouseX, _mouseY);
 
 	if (_debugNop) {
-		_vm->_mainFont->drawString(&surface, Common::String::format("Debug display: %s", _vm->_textActorNames->getText(_debugNop)), 120, 132, surface.w, surface.format.RGBToColor(255, 255, 0));
+		_vm->getMainFont()->drawString(&surface, Common::String::format("Debug display: %s", _vm->_textActorNames->getText(_debugNop)), 120, 132, surface.w, surface.format.RGBToColor(255, 255, 0));
 	}
 	if (_debugIntangible) {
-		_vm->_mainFont->drawString(&surface, "Debug Mode: Showing intangible clues.", 220, 105, surface.w, surface.format.RGBToColor(255, 255, 0));
+		_vm->getMainFont()->drawString(&surface, "Debug Mode: Showing intangible clues.", 220, 105, surface.w, surface.format.RGBToColor(255, 255, 0));
 	}
 }
 
@@ -274,11 +275,11 @@ void KIASectionClues::populateFilters() {
 		availableFilters[i] = false;
 	}
 
-	Common::String assetTypeNames[] = {
-		_vm->_textKIA->getText(6),
-		_vm->_textKIA->getText(7),
-		_vm->_textKIA->getText(8),
-		_vm->_textKIA->getText(9)
+	Common::U32String assetTypeNames[] = {
+		_vm->_textKIA->getTextU32(6),
+		_vm->_textKIA->getTextU32(7),
+		_vm->_textKIA->getTextU32(8),
+		_vm->_textKIA->getTextU32(9)
 	};
 
 	for (int i = 0; i < kClueCount; ++i) {
@@ -308,7 +309,7 @@ void KIASectionClues::populateFilters() {
 	}
 
 	if (assetTypeFiltersAvailable > 1) {
-		_filterScrollBox->addLine(_vm->_textKIA->getText(11), -1, 0x04);
+		_filterScrollBox->addLine(_vm->_textKIA->getTextU32(11), -1, 0x04);
 
 		for (int i = 0; i < _assetTypeFilterCount; ++i) {
 			if (availableFilters[i]) {
@@ -317,12 +318,12 @@ void KIASectionClues::populateFilters() {
 					flags |= 0x02;
 				}
 
-				Common::String text;
+				Common::U32String text;
 				int typeTextId = getClueFilterTypeTextId(i);
 				if (typeTextId == -1) {
-					text = _vm->_textKIA->getText(10);
+					text = _vm->_textKIA->getTextU32(10);
 				} else {
-					text =  assetTypeNames[typeTextId];
+					text = assetTypeNames[typeTextId];
 				}
 
 				_filterScrollBox->addLine(text, i, flags);
@@ -335,7 +336,7 @@ void KIASectionClues::populateFilters() {
 			_filterScrollBox->addLine(" ", -1, 0);
 		}
 
-		_filterScrollBox->addLine(_vm->_textKIA->getText(12), -1, 0x04);
+		_filterScrollBox->addLine(_vm->_textKIA->getTextU32(12), -1, 0x04);
 
 		Common::Array<Line> crimeLines;
 		crimeLines.reserve(crimeFiltersAvailable);
@@ -406,7 +407,7 @@ void KIASectionClues::populateClues() {
 						flags |= 0x40;
 					}
 #endif // BLADERUNNER_ORIGINAL_BUGS
-					_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueText(clueId), clueId, flags);
+					_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueTextU32(clueId), clueId, flags);
 				}
 			}
 		}

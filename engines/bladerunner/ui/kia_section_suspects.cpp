@@ -20,6 +20,7 @@
  */
 
 #include "bladerunner/ui/kia_section_suspects.h"
+#include "common/ustr.h"
 
 #include "bladerunner/actor_clues.h"
 #include "bladerunner/audio_player.h"
@@ -43,6 +44,11 @@
 
 namespace BladeRunner {
 
+// Filter checkbox row spacing for the "線索篩選" section.
+// Change kFilterItemSpacing to adjust row height (original = 10px).
+static const int kFilterItemSpacingSuspects = 12;
+
+
 KIASectionSuspects::KIASectionSuspects(BladeRunnerEngine *vm, ActorClues *clues) : KIASectionBase(vm) {
 	_uiContainer = new UIContainer(_vm);
 	_isOpen = false;
@@ -59,13 +65,13 @@ KIASectionSuspects::KIASectionSuspects(BladeRunnerEngine *vm, ActorClues *clues)
 
 	_buttons = new UIImagePicker(_vm, 4);
 
-	_whereaboutsCheckBox  = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 318, 275, 328), 1, _whereaboutsFilter);
-	_MOCheckBox           = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 328, 275, 338), 1, _MOFilter);
-	_replicantCheckBox    = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 338, 275, 348), 1, _replicantFilter);
-	_nonReplicantCheckBox = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 348, 275, 358), 1, _nonReplicantFilter);
-	_othersCheckBox       = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 358, 275, 368), 1, _othersFilter);
+	_whereaboutsCheckBox  = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 318, 275, 330), 1, _whereaboutsFilter);
+	_MOCheckBox           = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 330, 275, 342), 1, _MOFilter);
+	_replicantCheckBox    = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 342, 275, 354), 1, _replicantFilter);
+	_nonReplicantCheckBox = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 354, 275, 366), 1, _nonReplicantFilter);
+	_othersCheckBox       = new UICheckBox(_vm, checkBoxCallback, this, Common::Rect(142, 366, 275, 378), 1, _othersFilter);
 	_cluesScrollBox       = new UIScrollBox(_vm, scrollBoxCallback, this, kClueCount, 1, false, Common::Rect(312, 172, 500, 376), Common::Rect(506, 160, 506, 394));
-	_crimesScrollBox      = new UIScrollBox(_vm, scrollBoxCallback, this, 50, 1, false, Common::Rect(154, 258, 291, 298), Common::Rect(120, 249, 120, 297));
+	_crimesScrollBox      = new UIScrollBox(_vm, scrollBoxCallback, this, 50, 1, false, Common::Rect(154, 258, 291, 298), Common::Rect(120, 249, 120, 297), 12);
 	_uiContainer->add(_whereaboutsCheckBox);
 	_uiContainer->add(_MOCheckBox);
 	_uiContainer->add(_replicantCheckBox);
@@ -166,13 +172,13 @@ void KIASectionSuspects::close() {
 }
 
 void KIASectionSuspects::draw(Graphics::Surface &surface) {
-	const char *text = nullptr;
+	Common::U32String text;
 	if (_suspectPhotoShapeId != -1) {
 		_suspectPhotoShapes->get(_suspectPhotoShapeId)->draw(surface, 142, 150);
 	}
 	if (_suspectPhotoShapeId == 14 || _suspectPhotoShapeId == 13) {
-		text = _vm->_textKIA->getText(49);
-		_vm->_mainFont->drawString(&surface, text, 190 - _vm->_mainFont->getStringWidth(text) / 2, 201, surface.w, surface.format.RGBToColor(255, 255, 255));
+		text = _vm->_textKIA->getTextU32(49);
+		_vm->getMainFont()->drawString(&surface, text, 190 - _vm->getMainFont()->getStringWidth(text) / 2, 201, surface.w, surface.format.RGBToColor(255, 255, 255));
 	}
 
 	_whereaboutsCheckBox->setChecked(_whereaboutsFilter);
@@ -183,14 +189,14 @@ void KIASectionSuspects::draw(Graphics::Surface &surface) {
 
 	_uiContainer->draw(surface);
 
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(0),  300, 162, surface.w, surface.format.RGBToColor(232, 240, 248));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(46), 142, 248, surface.w, surface.format.RGBToColor(232, 240, 248));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(47), 142, 308, surface.w, surface.format.RGBToColor(232, 240, 248));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(14), 154, 319, surface.w, surface.format.RGBToColor(72, 104, 152));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(15), 154, 329, surface.w, surface.format.RGBToColor(96, 120, 184));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(16), 154, 339, surface.w, surface.format.RGBToColor(112, 144, 216));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(17), 154, 349, surface.w, surface.format.RGBToColor(96, 120, 184));
-	_vm->_mainFont->drawString(&surface, _vm->_textKIA->getText(48), 154, 359, surface.w, surface.format.RGBToColor(72, 104, 152));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(0),  300, 162, surface.w, surface.format.RGBToColor(232, 240, 248));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(46), 142, 248, surface.w, surface.format.RGBToColor(232, 240, 248));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(47), 142, 308, surface.w, surface.format.RGBToColor(232, 240, 248));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(14), 154, 319, surface.w, surface.format.RGBToColor(72, 104, 152));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(15), 154, 331, surface.w, surface.format.RGBToColor(96, 120, 184));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(16), 154, 343, surface.w, surface.format.RGBToColor(112, 144, 216));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(17), 154, 355, surface.w, surface.format.RGBToColor(96, 120, 184));
+	_vm->getMainFont()->drawString(&surface, _vm->_textKIA->getTextU32(48), 154, 367, surface.w, surface.format.RGBToColor(72, 104, 152));
 
 
 	surface.fillRect(Common::Rect(120, 134, 250, 145), 0);
@@ -200,23 +206,20 @@ void KIASectionSuspects::draw(Graphics::Surface &surface) {
 	surface.vLine(251, 134, 145, surface.format.RGBToColor(88, 80, 96));
 	surface.hLine(251, 146, 251, surface.format.RGBToColor(72, 64, 72));
 
-	Common::String generatedText;
 	if (_suspectSelected == -1) {
-		text = _vm->_textKIA->getText(22);
+		text = _vm->_textKIA->getTextU32(22);
 	} else {
 		const char *suspectName = _vm->_suspectsDatabase->get(_suspectSelected)->getName();
 		if (_suspectsWithIdentity[_suspectSelected]) {
-			text = suspectName;
+			text = Common::U32String(suspectName);
 		} else if (_vm->_suspectsDatabase->get(_suspectSelected)->getSex()) {
-			generatedText = Common::String::format("%s %s", _vm->_textKIA->getText(20), _vm->_kia->scrambleSuspectsName(suspectName));
-			text = generatedText.c_str();
+			text = _vm->_textKIA->getTextU32(20) + Common::U32String(" ") + Common::U32String(_vm->_kia->scrambleSuspectsName(suspectName));
 		} else {
-			generatedText = Common::String::format("%s %s", _vm->_textKIA->getText(21), _vm->_kia->scrambleSuspectsName(suspectName));
-			text = generatedText.c_str();
+			text = _vm->_textKIA->getTextU32(21) + Common::U32String(" ") + Common::U32String(_vm->_kia->scrambleSuspectsName(suspectName));
 		}
 	}
 
-	_vm->_mainFont->drawString(&surface, text, 185 - _vm->_mainFont->getStringWidth(text) / 2, 136, surface.w, surface.format.RGBToColor(136, 168, 248));
+	_vm->getMainFont()->drawString(&surface, text, 185 - _vm->getMainFont()->getStringWidth(text) / 2, 136, surface.w, surface.format.RGBToColor(136, 168, 248));
 
 	_buttons->draw(surface);
 	_buttons->drawTooltip(surface, _mouseX, _mouseY);
@@ -459,7 +462,7 @@ void KIASectionSuspects::populateVisibleClues() {
 						flags |= 0x40;
 					}
 #endif // BLADERUNNER_ORIGINAL_BUGS
-					_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueText(clueId), clueId, flags);
+					_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueTextU32(clueId), clueId, flags);
 				}
 			}
 		}

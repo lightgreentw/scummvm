@@ -33,9 +33,12 @@
 #include "engines/engine.h"
 
 #include "graphics/surface.h"
+#include "graphics/font.h"
+#include "graphics/fonts/ttf.h"
 
 #include "math/cosinetables.h"
 #include "math/sinetables.h"
+
 
 //TODO: change this to debugflag
 #define BLADERUNNER_DEBUG_CONSOLE     0
@@ -168,6 +171,25 @@ public:
 	KIA                *_kia;
 	Lights             *_lights;
 	Font               *_mainFont;
+	Graphics::Font     *_mainFontTTF;
+	bool                _mainFontIsTTF;
+
+	// Target height in pixels for the main UI TTF font.
+	// With kTTFSizeModeCell + xdpi=72/ydpi=72, this value maps directly to
+	// the rendered pixel height, so "16" → glyphs ~16px tall.
+	// Adjust this single constant to change all UI text size at once.
+	// (Previously named kMainFontTTFSize = 12, which rendered as ~8px because
+	//  loadTTFFont was called without explicit dpi, letting FreeType pick a
+	//  lower effective size than intended.)
+	static const int    kUIFontSize = 16;
+
+	// Global vertical offset (pixels) applied to every glyph when drawing
+	// the main UI font. Negative values shift glyphs UP; positive shift DOWN.
+	// Tune this if Latin or CJK characters appear too high or too low in the
+	// UI list rows. Start with small values like -2 or -3.
+	static const int    kUIFontYOffset = -3;
+	Graphics::Font *getMainFont() const;
+	
 	Subtitles          *_subtitles;
 	Mouse              *_mouse;
 	Music              *_music;
@@ -450,23 +472,23 @@ public:
 	void  setExtraCNotify(uint8 val);
 };
 
-static inline constexpr Graphics::PixelFormat gameDataPixelFormat() {
-	return Graphics::PixelFormat(2, 5, 5, 5, 0, 10, 5, 0, 0);
+static inline const Graphics::PixelFormat gameDataPixelFormat() {
+	return Graphics::PixelFormat(2, 5, 5, 5, 1, 10, 5, 0, 15);
 }
 
-static inline bool getGameDataColor(uint16 color, uint8 &r, uint8 &g, uint8 &b) {
+static inline void getGameDataColor(uint16 color, uint8 &a, uint8 &r, uint8 &g, uint8 &b) {
+	// gameDataPixelFormat().colorToARGB(vqaColor, a, r, g, b);
 	// using pixel format functions is too slow on some ports because of runtime checks
 	uint8 r5 = (color >> 10) & 0x1F;
 	uint8 g5 = (color >>  5) & 0x1F;
 	uint8 b5 = (color      ) & 0x1F;
+	a = color >> 15;
 	r = (r5 << 3) | (r5 >> 2);
 	g = (g5 << 3) | (g5 >> 2);
 	b = (b5 << 3) | (b5 >> 2);
-	// alpha is inversed for fonts and shapes
-	return !(color & 0x8000);
 }
 
-static inline const Graphics::PixelFormat &screenPixelFormat() {
+static inline const Graphics::PixelFormat screenPixelFormat() {
 	return ((BladeRunnerEngine*)g_engine)->_screenPixelFormat;
 }
 

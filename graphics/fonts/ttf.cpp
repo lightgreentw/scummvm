@@ -167,7 +167,7 @@ public:
 
 	bool load(Common::SeekableReadStream *ttfFile, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode,
 	          uint xdpi, uint ydpi, TTFRenderMode renderMode, const uint32 *mapping, bool stemDarkening,
-	          int32 faceIndex = 0, bool fakeBold = false, bool fakeItalic = false);
+	          int32 faceIndex = 0, bool fakeBold = false, bool fakeItalic = false, int yOffsetAdjust = 0);
 
 	int getFontHeight() const override;
 	Common::String getFontName() const override;
@@ -224,13 +224,19 @@ private:
 
 	bool _fakeBold;
 	bool _fakeItalic;
+
+	// Extra vertical offset (px) applied only to CJK codepoints, to correct
+	// baseline mismatch when CJK and Latin glyphs are mixed. 0 = no change
+	// (default, fully backward compatible).
+	int _yOffsetAdjust;  // global Y offset correction for all glyphs (negative = shift up)
+	
 };
 
 TTFFont::TTFFont()
 	: _initialized(false), _stream(), _face(), _ttfFile(0), _width(0), _height(0), _ascent(0),
 	  _descent(0), _glyphs(), _loadFlags(FT_LOAD_TARGET_NORMAL), _renderMode(FT_RENDER_MODE_NORMAL),
 	  _hasKerning(false), _allowLateCaching(false), _fakeBold(false), _fakeItalic(false),
-	  _disposeAfterUse(DisposeAfterUse::NO) {
+	  _disposeAfterUse(DisposeAfterUse::NO), _yOffsetAdjust(0) {
 }
 
 TTFFont::~TTFFont() {
@@ -251,8 +257,9 @@ TTFFont::~TTFFont() {
 
 bool TTFFont::load(Common::SeekableReadStream *ttfFile, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode,
 				   uint xdpi, uint ydpi, TTFRenderMode renderMode, const uint32 *mapping, bool stemDarkening,
-				   int32 faceIndex, bool bold, bool italic) {
+				   int32 faceIndex, bool bold, bool italic, int yOffsetAdjust) {
 	_initialized = false;
+	_yOffsetAdjust = yOffsetAdjust;
 
 	if (!g_ttf.isInitialized())
 		return false;
@@ -821,6 +828,9 @@ bool TTFFont::cacheGlyph(Glyph &glyph, uint32 chr) const {
 
 	glyph.xOffset = _face->glyph->bitmap_left;
 	glyph.yOffset = _ascent - _face->glyph->bitmap_top;
+	if (_yOffsetAdjust != 0) {
+		glyph.yOffset += _yOffsetAdjust;
+	}
 
 	glyph.advance = ftCeil26_6(_face->glyph->advance.x);
 
@@ -931,10 +941,10 @@ void TTFFont::assureCached(uint32 chr) const {
 	}
 }
 
-Font *loadTTFFont(Common::SeekableReadStream *stream, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode, uint xdpi, uint ydpi, TTFRenderMode renderMode, const uint32 *mapping, bool stemDarkening) {
+Font *loadTTFFont(Common::SeekableReadStream *stream, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode, uint xdpi, uint ydpi, TTFRenderMode renderMode, const uint32 *mapping, bool stemDarkening, int yOffsetAdjust) {
 	TTFFont *font = new TTFFont();
 
-	if (!font->load(stream, disposeAfterUse, size, sizeMode, xdpi, ydpi, renderMode, mapping, stemDarkening)) {
+	if (!font->load(stream, disposeAfterUse, size, sizeMode, xdpi, ydpi, renderMode, mapping, stemDarkening, 0, false, false, yOffsetAdjust)) {
 		delete font;
 		return 0;
 	}

@@ -23,6 +23,7 @@
 #define BLADERUNNER_TEXT_RESOURCE_H
 
 #include "common/str.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -44,7 +45,9 @@ public:
 	bool open(const Common::String &name, bool localized = true);
 
 	const char *getText(uint32 id) const;
+	Common::U32String getTextU32(uint32 id) const;
 	const char *getOuttakeTextByFrame(uint32 frame) const;
+	Common::U32String getOuttakeTextU32ByFrame(uint32 frame) const;
 	int getCount() const;
 };
 

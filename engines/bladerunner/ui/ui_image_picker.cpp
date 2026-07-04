@@ -30,6 +30,7 @@
 
 #include "common/rect.h"
 #include "common/str.h"
+#include "common/ustr.h"
 #include "graphics/surface.h"
 
 namespace BladeRunner {
@@ -70,7 +71,7 @@ bool UIImagePicker::defineImage(int i, Common::Rect rect, const Shape *shapeUp, 
 	img.active = true;
 
 	if (tooltip != nullptr) {
-		img.tooltip = tooltip;
+		img.tooltip = Common::U32String(tooltip);
 	} else {
 		img.tooltip.clear();
 	}
@@ -150,7 +151,7 @@ bool UIImagePicker::setImageTooltip(int i, const char *tooltip) {
 	}
 
 	if (tooltip != nullptr) {
-		_images[i].tooltip = tooltip;
+		_images[i].tooltip = Common::U32String(tooltip);
 	} else {
 		_images[i].tooltip.clear();
 	}
@@ -255,7 +256,7 @@ void UIImagePicker::draw(Graphics::Surface &surface) {
 
 		if (_vm->_debugger->_viewUI) {
 			surface.frameRect(img.rect, surface.format.RGBToColor(255, 255, 255));
-			_vm->_mainFont->drawString(&surface, Common::String::format("%d", i), (img.rect.left + img.rect.right) / 2, (img.rect.top + img.rect.bottom) / 2, surface.w, surface.format.RGBToColor(255, 255, 255));
+			_vm->getMainFont()->drawString(&surface, Common::String::format("%d", i), (img.rect.left + img.rect.right) / 2, (img.rect.top + img.rect.bottom) / 2, surface.w, surface.format.RGBToColor(255, 255, 255));
 		}
 	}
 }
@@ -274,14 +275,14 @@ void UIImagePicker::drawTooltip(Graphics::Surface &surface, int x, int y) {
 		return;
 	}
 
-	Common::String &tooltip = _images[_hoveredImageIndex].tooltip;
+	Common::U32String &tooltip = _images[_hoveredImageIndex].tooltip;
 
 	if (tooltip.empty()) {
 		return;
 	}
 
-	int width = _vm->_mainFont->getStringWidth(tooltip) + 1;
-	int height = _vm->_mainFont->getFontHeight() + 1;
+	int width = _vm->getMainFont()->getStringWidth(tooltip) + 1;
+	int height = _vm->getMainFont()->getFontHeight() + 1;
 
 	Common::Rect rect;
 	rect.left = x - ((width / 2) + 1);
@@ -312,7 +313,7 @@ void UIImagePicker::drawTooltip(Graphics::Surface &surface, int x, int y) {
 
 	surface.fillRect(rect, surface.format.RGBToColor(0, 0, 0));
 	surface.frameRect(rect, surface.format.RGBToColor(255, 255, 255));
-	_vm->_mainFont->drawString(&surface, tooltip, rect.left + 2, rect.top, surface.w, surface.format.RGBToColor(255, 255, 255));
+	_vm->getMainFont()->drawString(&surface, tooltip, rect.left + 2, rect.top, surface.w, surface.format.RGBToColor(255, 255, 255));
 }
 
 bool UIImagePicker::handleMouseAction(int x, int y, bool down, bool up, bool ignore) {

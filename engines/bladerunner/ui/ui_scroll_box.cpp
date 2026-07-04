@@ -32,6 +32,10 @@
 
 namespace BladeRunner {
 
+// Original hardcoded line height (pixels). Used as the constructor placeholder
+// and as a safe fallback before the dynamic _lineHeight is computed in show().
+static const int kLineHeight = 10;
+
 const Color256 UIScrollBox::k3DFrameColors[] = {
 	{ 32, 32, 24 },
 	{ 40, 40, 40 },
@@ -86,7 +90,8 @@ UIScrollBox::UIScrollBox(BladeRunnerEngine *vm,
 	                     int style,
 	                     bool center,
 	                     Common::Rect rect,
-	                     Common::Rect scrollBarRect) : UIComponent(vm) {
+	                     Common::Rect scrollBarRect,
+	                     int lineHeightOverride) : UIComponent(vm) {
 
 	_selectedLineState     = 0;
 	_scrollUpButtonState   = 0;
@@ -123,6 +128,12 @@ UIScrollBox::UIScrollBox(BladeRunnerEngine *vm,
 	_lineCount    = 0;
 	_maxLineCount = maxLineCount;
 
+	// _lineHeight is 0 here: the main UI font may not be loaded yet at
+	// construction time. It is computed lazily the first time show() is
+	// called (see initLineHeight()).
+	_lineHeight = 0;
+	_lineHeightOverride = lineHeightOverride; // 0 = auto from font
+
 	_firstLineVisible = 0;
 	_maxLinesVisible  = _rect.height() / kLineHeight;
 
@@ -148,6 +159,28 @@ UIScrollBox::~UIScrollBox() {
 }
 
 void UIScrollBox::show() {
+	// Lazy init: compute line height from the actual loaded UI font.
+	// We do this here (not in the constructor) because the font may not be
+	// loaded yet when UIScrollBox objects are created during KIA construction.
+	// getFontHeight() + 2px padding; minimum 10 to preserve the original look.
+	if (_lineHeight == 0 && (_vm->getMainFont() != nullptr || _lineHeightOverride > 0)) {
+		if (_lineHeightOverride > 0) {
+			_lineHeight = _lineHeightOverride;
+		} else {
+			_lineHeight = _vm->getMainFont()->getFontHeight() + 2;
+			if (_lineHeight < 10) {
+				_lineHeight = 10;
+			}
+		}
+		// Recompute the number of visible rows and the bounding rect bottom
+		// now that we know the actual line height.
+		_maxLinesVisible = (_rect.bottom - _rect.top + 1) / _lineHeight;
+		if (_maxLinesVisible < 1) {
+			_maxLinesVisible = 1;
+		}
+		_rect.bottom = _rect.top + _lineHeight * _maxLinesVisible - 1;
+	}
+
 	_selectedLineState     = 0;
 	_scrollUpButtonState   = 0;
 	_scrollDownButtonState = 0;
@@ -187,9 +220,9 @@ bool UIScrollBox::hasFocus() {
 }
 
 void UIScrollBox::setBoxTop(int top) {
+	int lh = (_lineHeight > 0) ? _lineHeight : kLineHeight;
 	_rect.moveTo(_rect.left, top);
-
-	_rect.bottom = _rect.top + kLineHeight * _maxLinesVisible - 1;
+	_rect.bottom = _rect.top + lh * _maxLinesVisible - 1;
 }
 
 void UIScrollBox::setBoxLeft(int left) {
@@ -227,6 +260,14 @@ void UIScrollBox::clearLines() {
 }
 
 void UIScrollBox::addLine(const Common::String &text, int lineData, int flags) {
+	_lines[_lineCount]->text = Common::U32String(text);  // UTF-8 decode for CJK support
+	_lines[_lineCount]->lineData = lineData;
+	_lines[_lineCount]->flags = flags;
+
+	++_lineCount;
+}
+
+void UIScrollBox::addLine(const Common::U32String &text, int lineData, int flags) {
 	_lines[_lineCount]->text = text;
 	_lines[_lineCount]->lineData = lineData;
 	_lines[_lineCount]->flags = flags;
@@ -235,7 +276,7 @@ void UIScrollBox::addLine(const Common::String &text, int lineData, int flags) {
 }
 
 void UIScrollBox::addLine(const char *text, int lineData, int flags) {
-	_lines[_lineCount]->text = text;
+	_lines[_lineCount]->text = Common::U32String(text);  // UTF-8 decode for CJK support
 	_lines[_lineCount]->lineData = lineData;
 	_lines[_lineCount]->flags = flags;
 
@@ -254,7 +295,8 @@ void UIScrollBox::handleMouseMove(int mouseX, int mouseY) {
 	_mouseOver = _rect.contains(mouseX, mouseY) || _scrollBarRect.contains(mouseX, mouseY);
 
 	if (_rect.contains(mouseX, mouseY)) {
-		int newHoveredLine = (mouseY - _rect.top) / 10 + _firstLineVisible;
+		int lh = (_lineHeight > 0) ? _lineHeight : kLineHeight;
+		int newHoveredLine = (mouseY - _rect.top) / lh + _firstLineVisible;
 		if (newHoveredLine >= _lineCount) {
 			newHoveredLine = -1;
 		}
@@ -427,11 +469,11 @@ int UIScrollBox::getSelectedLineData() {
 	return -1;
 }
 
-Common::String UIScrollBox::getLineText(int lineData) {
+Common::U32String UIScrollBox::getLineText(int lineData) {
 	if (hasLine(lineData)) {
 		return _lines[_hoveredLine]->text;
 	}
-	return "";
+	return Common::U32String();
 }
 
 int UIScrollBox::getMaxLinesVisible() {
@@ -446,6 +488,10 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 	if (!_isVisible) {
 		return;
 	}
+
+	// Use the dynamically computed line height; fall back to the original
+	// hardcoded value if show() hasn't been called yet (safety guard).
+	const int lh = (_lineHeight > 0) ? _lineHeight : kLineHeight;
 
 	uint32 timeNow = _vm->_time->currentSystem();
 
@@ -527,7 +573,6 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 	if (_firstLineVisible < lastLineVisible) {
 		int y = _rect.top;
 		int y1 = _rect.top + 8;
-		int y2 = _rect.top + 2;
 		int i = _firstLineVisible;
 		do {
 			int startingColorIndex = 3;
@@ -587,7 +632,10 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 				} else {
 					checkboxShapeId = 52;
 				}
-				_vm->_kia->_shapes->get(checkboxShapeId)->draw(surface, x - 1, y);
+				const Shape *checkboxShape = _vm->_kia->_shapes->get(checkboxShapeId);
+				// Center checkbox icon within the (possibly taller) line height.
+				int checkboxYOff = (lh - checkboxShape->getHeight()) / 2;
+				checkboxShape->draw(surface, x - 1, y + checkboxYOff);
 				x += 11;
 			}
 
@@ -597,7 +645,10 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 					if (highlightShapeId > 4) {
 						highlightShapeId = 8 - highlightShapeId;
 					}
-					_vm->_kia->_shapes->get(highlightShapeId + 85)->draw(surface, x, y2);
+					const Shape *hlShape = _vm->_kia->_shapes->get(highlightShapeId + 85);
+					// Center highlight icon within the line height.
+					int hlYOff = (lh - hlShape->getHeight()) / 2;
+					hlShape->draw(surface, x, y + hlYOff);
 				}
 				x += 6;
 			}
@@ -622,7 +673,7 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 				if (_style == 2) {
 					// New: style = 2 (original unused)
 					// original behavior -- No padding between the colored background of lines, simulate solid background (gradient)
-					surface.fillRect(Common::Rect(CLIP(x - 1, 0, 639), y, _rect.right + 1, y + kLineHeight), colorBackground);
+					surface.fillRect(Common::Rect(CLIP(x - 1, 0, 639), y, _rect.right + 1, y + lh), colorBackground);
 				} else {
 					// original behavior -- there is padding between the colored background of lines
 					surface.fillRect(Common::Rect(x, y, _rect.right + 1, y1 + 1), colorBackground);
@@ -630,14 +681,13 @@ void UIScrollBox::draw(Graphics::Surface &surface) {
 			}
 
 			if (_center) {
-				x = _rect.left + (_rect.width() - _vm->_mainFont->getStringWidth(_lines[i]->text)) / 2;
+				x = _rect.left + (_rect.width() - _vm->getMainFont()->getStringWidth(_lines[i]->text)) / 2;
 			}
 
-			_vm->_mainFont->drawString(&surface, _lines[i]->text, x, y, surface.w, color);
+			_vm->getMainFont()->drawString(&surface, _lines[i]->text, x, y, surface.w, color);
 
-			y1 += kLineHeight;
-			y2 += kLineHeight;
-			y += kLineHeight;
+			y1 += lh;
+			y += lh;
 			++i;
 		} while (i < lastLineVisible);
 	}
@@ -773,7 +823,8 @@ void UIScrollBox::resetFlags(int lineData, int flags) {
 int UIScrollBox::sortFunction(const void *item1, const void *item2) {
 	Line *line1 = *(Line * const *)item1;
 	Line *line2 = *(Line * const *)item2;
-	return line1->text.compareToIgnoreCase(line2->text);
+	// U32String doesn't have compareToIgnoreCase; encode to UTF-8 for comparison
+	return line1->text.encode().compareToIgnoreCase(line2->text.encode());
 }
 
 void UIScrollBox::draw3DFrame(Graphics::Surface &surface, Common::Rect rect, bool pressed, int style) {

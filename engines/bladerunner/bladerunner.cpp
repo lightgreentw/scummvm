@@ -175,6 +175,12 @@ BladeRunnerEngine::BladeRunnerEngine(OSystem *syst, const ADGameDescription *des
 	case Common::ES_ESP:
 		_languageCode = "S";
 		break;
+	case Common::ZH_TWN:
+    	_languageCode = "C";
+	    break;
+	case Common::ZH_CHN:
+    	_languageCode = "C";
+	    break;
 	default:
 		_languageCode = "E";
 	}
@@ -223,6 +229,8 @@ BladeRunnerEngine::BladeRunnerEngine(OSystem *syst, const ADGameDescription *des
 	_scores                  = nullptr;
 	_elevator                = nullptr;
 	_mainFont                = nullptr;
+	_mainFontTTF             = nullptr;
+    _mainFontIsTTF           = false;
 	_subtitles               = nullptr;
 	_esper                   = nullptr;
 	_vk                      = nullptr;
@@ -383,17 +391,7 @@ Common::Error BladeRunnerEngine::run() {
 		}
 	}
 
-#ifdef __3DS__
-	// On the 3DS following pixel format is the closest supported
-	// format to the one used by the game data files. We use it here
-	// to take advantage of faster blitting functions.
-	// TODO: Determine this programatically?
-	Graphics::PixelFormat fmt5551(2, 5, 5, 5, 1, 11, 6, 1, 0);
-	initGraphics(gameBRWidth, gameBRHeight, &fmt5551);
-#else
 	initGraphics(gameBRWidth, gameBRHeight, nullptr);
-#endif
-
 	_screenPixelFormat = g_system->getScreenFormat();
 	debug("Using pixel format: %s", _screenPixelFormat.toString().c_str());
 
@@ -416,9 +414,9 @@ Common::Error BladeRunnerEngine::run() {
 				getEventManager()->getKeymapper()->getKeymap(BladeRunnerEngine::kGameplayKeymapId)->setEnabled(true);
 				const Common::Keymap::ActionArray karr = getEventManager()->getKeymapper()->getKeymap(BladeRunnerEngine::kGameplayKeymapId)->getActions();
 				for (uint8 i = 0; i < karr.size(); ++i) {
-					if (karr[i]->description == U"COMBAT"
-					    || karr[i]->description == U"SKIPDLG"
-					    || karr[i]->description == U"KIADB") {
+					if (karr[i]->description == "COMBAT"
+					    || karr[i]->description == "SKIPDLG"
+					    || karr[i]->description == "KIADB") {
 						getEventManager()->getKeymapper()->getKeymap(BladeRunnerEngine::kGameplayKeymapId)->unregisterMapping(karr[i]);
 					}
 				}
@@ -789,7 +787,7 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 		if (!_textOptions->open("OPTIONS"))
 			return false;
 
-		_russianCP1251 = ((uint8)_textOptions->getText(0)[0]) == 209;
+		_russianCP1251 = ((uint8)_textOptions->getTextU32(0)[0]) == 209;
 
 		_dialogueMenu = new DialogueMenu(this);
 		if (!_dialogueMenu->loadResources())
@@ -805,8 +803,75 @@ bool BladeRunnerEngine::startup(bool hasSavegames) {
 
 		_scores = new Scores(this);
 
-		_mainFont = Font::load(this, "KIA6PT.FON", 1, false);
+		//_mainFont = Font::load(this, "KIA6PT.FON", 1, false);
+		_mainFont = nullptr;
+		_mainFontIsTTF = false;
 
+#if defined(USE_FREETYPE2)
+		// Tier 1: prefer a dedicated UI font (UIFONT.TTF) embedded in SUBTITLES.MIX
+		// or present as a loose file. br_subtitle_tool.py 'import' places it there
+		// automatically when uifont.ttf is found next to the tool.
+		Common::SeekableReadStream *uiFontStream = getResourceStream("UIFONT.TTF");
+		if (uiFontStream) {
+			Graphics::Font *uiTtfFont = Graphics::loadTTFFont(
+				uiFontStream, DisposeAfterUse::YES,
+				kUIFontSize,
+				Graphics::kTTFSizeModeCell,
+				72, 72,
+				Graphics::kTTFRenderModeLight,
+				nullptr, false,
+				kUIFontYOffset);
+			if (uiTtfFont) {
+				_mainFontTTF   = uiTtfFont;
+				_mainFont      = nullptr;
+				_mainFontIsTTF = true;
+				debug("BladeRunner: Using dedicated UI TTF font 'UIFONT.TTF'");
+			} else {
+				warning("BladeRunner: Failed to load 'UIFONT.TTF', trying subtitle font");
+			}
+		}
+#endif
+
+		// Tier 2: fall back to sharing the subtitle TTF font
+		if (!_mainFontIsTTF && _subtitles != nullptr) {
+			Subtitles::SubtitlesInfo subsInfo = _subtitles->getSubtitlesInfo();
+			if (subsInfo.fontType == Subtitles::kSubtitlesFontTypeTTF
+			    && !subsInfo.fontName.empty()) {
+#if defined(USE_FREETYPE2)
+				Common::SeekableReadStream *stream = getResourceStream(subsInfo.fontName);
+				if (stream) {
+					Graphics::Font *ttfFont = Graphics::loadTTFFont(
+						stream, DisposeAfterUse::YES,
+						kUIFontSize,
+						Graphics::kTTFSizeModeCell,
+						72, 72,
+						Graphics::kTTFRenderModeLight,
+						nullptr, false,
+						kUIFontYOffset);
+					if (ttfFont) {
+						_mainFontTTF   = ttfFont;
+						_mainFont      = nullptr;
+						_mainFontIsTTF = true;
+						debug("BladeRunner: Using subtitle TTF font '%s' for UI (shared)",
+						      subsInfo.fontName.c_str());
+					} else {
+						warning("BladeRunner: Failed to load TTF font '%s' for UI",
+						        subsInfo.fontName.c_str());
+					}
+				} else {
+					warning("BladeRunner: TTF font '%s' not found in archives",
+					        subsInfo.fontName.c_str());
+				}
+#else
+				warning("BladeRunner: TTF UI font requested but FreeType2 not compiled in.");
+#endif
+			}
+		}
+
+		// Tier 3: built-in bitmap font fallback
+		if (!_mainFontIsTTF) {
+			_mainFont = Font::load(this, "KIA6PT.FON", 1, false);
+		}
 		_shapes = new Shapes(this);
 		_shapes->load("SHAPES.SHP");
 
@@ -927,6 +992,9 @@ void BladeRunnerEngine::shutdown() {
 
 	delete _mainFont;
 	_mainFont = nullptr;
+
+	delete _mainFontTTF;
+	_mainFontTTF = nullptr;
 
 	delete _scores;
 	_scores = nullptr;
@@ -1293,12 +1361,14 @@ void BladeRunnerEngine::gameTick() {
 		// We need to copy pixel by pixel, converting each pixel from 16 to 32bit
 		for (int y = 0; y < kOriginalGameHeight; ++y) {
 			for (int x = 0; x < kOriginalGameWidth; ++x) {
-				uint8 r, g, b;
+				uint8 a, r, g, b;
+				//getGameDataColor(_zbuffer->getData()[y*kOriginalGameWidth + x], a, r, g, b);
+				a = 1;
 				r = _zbuffer->getData()[y*kOriginalGameWidth + x] / 256;
 				g = r;
 				b = r;
 				void   *dstPixel = _surfaceFront.getBasePtr(x, y);
-				drawPixel(_surfaceFront, dstPixel, _surfaceFront.format.RGBToColor(r, g, b));
+				drawPixel(_surfaceFront, dstPixel, _surfaceFront.format.ARGBToColor(a, r, g, b));
 			}
 		}
 	}
@@ -2637,7 +2707,6 @@ bool BladeRunnerEngine::saveGame(Common::WriteStream &stream, Graphics::Surface 
 		else
 			Graphics::saveThumbnail(s);
 	} else {
-		// TODO: Do we need to set the alpha channel for original save files?
 		thumb->convertToInPlace(gameDataPixelFormat());
 
 		uint16 *thumbnailData = (uint16*)thumb->getPixels();
@@ -2931,16 +3000,20 @@ void BladeRunnerEngine::blitToScreen(const Graphics::Surface &src) const {
 
 Graphics::Surface BladeRunnerEngine::generateThumbnail() const {
 	Graphics::Surface thumbnail;
-	thumbnail.create(kOriginalGameWidth / 8, kOriginalGameHeight / 8, _surfaceFront.format);
+	thumbnail.create(kOriginalGameWidth / 8, kOriginalGameHeight / 8, gameDataPixelFormat());
 
 	for (int y = 0; y < thumbnail.h; ++y) {
 		for (int x = 0; x < thumbnail.w; ++x) {
-			uint32 srcPixel = _surfaceFront.getPixel(CLIP(x * 8, 0, _surfaceFront.w - 1), CLIP(y * 8, 0, _surfaceFront.h - 1));
-			thumbnail.setPixel(CLIP(x, 0, thumbnail.w - 1), CLIP(y, 0, thumbnail.h - 1), srcPixel);
+			uint8 r, g, b;
+
+			uint32  srcPixel = READ_UINT32(_surfaceFront.getBasePtr(CLIP(x * 8, 0, _surfaceFront.w - 1), CLIP(y * 8, 0, _surfaceFront.h - 1)));
+			void   *dstPixel = thumbnail.getBasePtr(CLIP(x, 0, thumbnail.w - 1), CLIP(y, 0, thumbnail.h - 1));
+
+			// Throw away alpha channel as it is not needed
+			_surfaceFront.format.colorToRGB(srcPixel, r, g, b);
+			drawPixel(thumbnail, dstPixel, thumbnail.format.RGBToColor(r, g, b));
 		}
 	}
-
-	thumbnail.convertToInPlace(gameDataPixelFormat());
 
 	return thumbnail;
 }
@@ -2951,6 +3024,11 @@ Common::String BladeRunnerEngine::getTargetName() const {
 
 void blit(const Graphics::Surface &src, Graphics::Surface &dst) {
 	dst.copyRectToSurface(src.getPixels(), src.pitch, 0, 0, src.w, src.h);
+}
+
+Graphics::Font *BladeRunnerEngine::getMainFont() const {
+    if (_mainFontIsTTF) return _mainFontTTF;
+    return static_cast<Graphics::Font *>(_mainFont);
 }
 
 } // End of namespace BladeRunner

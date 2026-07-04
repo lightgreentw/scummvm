@@ -40,6 +40,7 @@
 #include "bladerunner/ui/ui_scroll_box.h"
 
 #include "graphics/surface.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -132,14 +133,14 @@ void KIASectionCrimes::close() {
 }
 
 void KIASectionCrimes::draw(Graphics::Surface &surface) {
-	const char *text = nullptr;
+	Common::U32String text;
 	if (_suspectPhotoShapeId != -1) {
 		const Shape *shape = _suspectPhotoShapes->get(_suspectPhotoShapeId);
 		shape->draw(surface, 201 - shape->getWidth() / 2, 223 - shape->getHeight() / 2);
 	}
 	if (_suspectPhotoShapeId == 14 || _suspectPhotoShapeId == 13) {
-		text = _vm->_textKIA->getText(49);
-		_vm->_mainFont->drawString(&surface, text, 201 - _vm->_mainFont->getStringWidth(text) / 2, 218, surface.w, surface.format.RGBToColor(255, 255, 255));
+		text = _vm->_textKIA->getTextU32(49);
+		_vm->getMainFont()->drawString(&surface, text, 201 - _vm->getMainFont()->getStringWidth(text) / 2, 218, surface.w, surface.format.RGBToColor(255, 255, 255));
 	}
 
 	surface.fillRect(Common::Rect(120, 134, 250, 145), 0);
@@ -150,12 +151,12 @@ void KIASectionCrimes::draw(Graphics::Surface &surface) {
 	surface.hLine(251, 146, 251, surface.format.RGBToColor(72, 64, 72));
 
 	if (_crimeSelected == -1) {
-		text = _vm->_textKIA->getText(49);
+		text = _vm->_textKIA->getTextU32(49);
 	} else {
-		text = _vm->_textCrimes->getText(_crimeSelected);
+		text = _vm->_textCrimes->getTextU32(_crimeSelected);
 	}
 
-	_vm->_mainFont->drawString(&surface, text, 185 - _vm->_mainFont->getStringWidth(text) / 2, 136, surface.w, surface.format.RGBToColor(136, 168, 255));
+	_vm->getMainFont()->drawString(&surface, text, 185 - _vm->getMainFont()->getStringWidth(text) / 2, 136, surface.w, surface.format.RGBToColor(136, 168, 255));
 
 	surface.fillRect(Common::Rect(136, 304, 266, 315), 0);
 	surface.hLine(136, 303, 266, surface.format.RGBToColor(48, 40, 40));
@@ -164,22 +165,19 @@ void KIASectionCrimes::draw(Graphics::Surface &surface) {
 	surface.vLine(267, 304, 315, surface.format.RGBToColor(88, 80, 96));
 	surface.hLine(267, 316, 267, surface.format.RGBToColor(72, 64, 72));
 
-	Common::String generatedText;
 	if (_suspectSelected == -1) {
-		text = _vm->_textKIA->getText(22);
+		text = _vm->_textKIA->getTextU32(22);
 	} else {
 		const char *suspectName = _vm->_suspectsDatabase->get(_suspectSelected)->getName();
 		if (_suspectsWithIdentity[_suspectSelected]) {
-			text = suspectName;
+			text = Common::U32String(suspectName);
 		} else if (_vm->_suspectsDatabase->get(_suspectSelected)->getSex()) {
-			generatedText = Common::String::format("%s %s", _vm->_textKIA->getText(20), _vm->_kia->scrambleSuspectsName(suspectName));
-			text = generatedText.c_str();
+			text = _vm->_textKIA->getTextU32(20) + Common::U32String(" ") + Common::U32String(_vm->_kia->scrambleSuspectsName(suspectName));
 		} else {
-			generatedText = Common::String::format("%s %s", _vm->_textKIA->getText(21), _vm->_kia->scrambleSuspectsName(suspectName));
-			text = generatedText.c_str();
+			text = _vm->_textKIA->getTextU32(21) + Common::U32String(" ") + Common::U32String(_vm->_kia->scrambleSuspectsName(suspectName));
 		}
 	}
-	_vm->_mainFont->drawString(&surface, text, 201 - _vm->_mainFont->getStringWidth(text) / 2, 306, surface.w, surface.format.RGBToColor(136, 168, 255));
+	_vm->getMainFont()->drawString(&surface, text, 201 - _vm->getMainFont()->getStringWidth(text) / 2, 306, surface.w, surface.format.RGBToColor(136, 168, 255));
 
 	_uiContainer->draw(surface);
 	_buttons->draw(surface);
@@ -397,7 +395,7 @@ void KIASectionCrimes::populateVisibleClues() {
 					flags |= 0x40;
 				}
 #endif // BLADERUNNER_ORIGINAL_BUGS
-				_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueText(clueId), clueId, flags);
+				_cluesScrollBox->addLine(_vm->_crimesDatabase->getClueTextU32(clueId), clueId, flags);
 			}
 		}
 		_cluesScrollBox->sortLines();

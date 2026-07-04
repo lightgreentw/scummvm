@@ -71,6 +71,10 @@ const char *CrimesDatabase::getClueText(int clueId) const {
 	return _cluesText->getText(clueId);
 }
 
+Common::U32String CrimesDatabase::getClueTextU32(int clueId) const {
+	return _cluesText->getTextU32(clueId);
+}
+
 void CrimesDatabase::save(SaveFileWriteStream &f) {
 	for (int i = 0; i < _crimeCount; ++i) {
 		int8 c = _crimes[i];

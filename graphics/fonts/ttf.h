@@ -96,9 +96,18 @@ enum TTFSizeMode {
  *                   loading fails in case no glyph for it is found. When this
  *                   is non-null only characters given in the mapping are
  *                   supported.
+ * @param yOffsetAdjust Optional extra vertical offset (in pixels, positive
+ *                   moves glyphs down, negative moves them up) applied to
+ *                   ALL rendered glyphs. Defaults to 0 (no change; fully
+ *                   backward compatible). Use a negative value (e.g. -2 or
+ *                   -3) to shift the entire rendered string upward when the
+ *                   font's internal metrics place glyphs lower than expected
+ *                   in mixed Latin+CJK UI text. Only the BladeRunner engine
+ *                   currently passes a non-zero value; all other callers
+ *                   receive the default and are unaffected.
  * @return 0 in case loading fails, otherwise a pointer to the Font object.
  */
-Font *loadTTFFont(Common::SeekableReadStream *stream, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode = kTTFSizeModeCharacter, uint xdpi = 0, uint ydpi = 0, TTFRenderMode renderMode = kTTFRenderModeLight, const uint32 *mapping = 0, bool stemDarkening = false);
+Font *loadTTFFont(Common::SeekableReadStream *stream, DisposeAfterUse::Flag disposeAfterUse, int size, TTFSizeMode sizeMode = kTTFSizeModeCharacter, uint xdpi = 0, uint ydpi = 0, TTFRenderMode renderMode = kTTFRenderModeLight, const uint32 *mapping = 0, bool stemDarkening = false, int yOffsetAdjust = 0);
 
 /**
  * Loads a TTF font file from the common fonts archive.

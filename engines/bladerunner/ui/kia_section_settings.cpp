@@ -20,6 +20,7 @@
  */
 
 #include "bladerunner/ui/kia_section_settings.h"
+#include "common/ustr.h"
 
 #include "bladerunner/audio_player.h"
 #include "bladerunner/audio_speech.h"
@@ -225,58 +226,58 @@ void KIASectionSettings::draw(Graphics::Surface &surface) {
 		_subtitlesEnable->setChecked(_vm->isSubtitlesEnabled());
 	}
 
-	const char *textConversationChoices = _vm->_textOptions->getText(0);
-	const char *textMusic = _vm->_textOptions->getText(2);
-	const char *textSoundEffects = _vm->_textOptions->getText(3);
-	const char *textAmbientSound = _vm->_textOptions->getText(4);
-	const char *textSpeech = _vm->_textOptions->getText(5);
-	const char *textSoft = _vm->_textOptions->getText(10);
-	const char *textLoud = _vm->_textOptions->getText(11);
-	const char *textDesignersCut = _vm->_textOptions->getText(18);
+	Common::U32String textConversationChoices = _vm->_textOptions->getTextU32(0);
+	Common::U32String textMusic = _vm->_textOptions->getTextU32(2);
+	Common::U32String textSoundEffects = _vm->_textOptions->getTextU32(3);
+	Common::U32String textAmbientSound = _vm->_textOptions->getTextU32(4);
+	Common::U32String textSpeech = _vm->_textOptions->getTextU32(5);
+	Common::U32String textSoft = _vm->_textOptions->getTextU32(10);
+	Common::U32String textLoud = _vm->_textOptions->getTextU32(11);
+	Common::U32String textDesignersCut = _vm->_textOptions->getTextU32(18);
 #if BLADERUNNER_ORIGINAL_SETTINGS
-	const char *textGammaCorrection = _vm->_textOptions->getText(7);
-	const char *textDark = _vm->_textOptions->getText(14);
-	const char *textLight = _vm->_textOptions->getText(15);
+	Common::U32String textGammaCorrection = _vm->_textOptions->getTextU32(7);
+	Common::U32String textDark = _vm->_textOptions->getTextU32(14);
+	Common::U32String textLight = _vm->_textOptions->getTextU32(15);
 #endif
 
-	int posConversationChoices = 320 - _vm->_mainFont->getStringWidth(textConversationChoices) / 2;
-	int posMusic = 320 - _vm->_mainFont->getStringWidth(textMusic) / 2;
-	int posSoundEffects = 320 - _vm->_mainFont->getStringWidth(textSoundEffects) / 2;
-	int posAmbientSound = 320 - _vm->_mainFont->getStringWidth(textAmbientSound) / 2;
-	int posSpeech = 320 - _vm->_mainFont->getStringWidth(textSpeech) / 2;
-	int posSoft = 178 - _vm->_mainFont->getStringWidth(textSoft);
+	int posConversationChoices = 320 - _vm->getMainFont()->getStringWidth(textConversationChoices) / 2;
+	int posMusic = 320 - _vm->getMainFont()->getStringWidth(textMusic) / 2;
+	int posSoundEffects = 320 - _vm->getMainFont()->getStringWidth(textSoundEffects) / 2;
+	int posAmbientSound = 320 - _vm->getMainFont()->getStringWidth(textAmbientSound) / 2;
+	int posSpeech = 320 - _vm->getMainFont()->getStringWidth(textSpeech) / 2;
+	int posSoft = 178 - _vm->getMainFont()->getStringWidth(textSoft);
 #if BLADERUNNER_ORIGINAL_SETTINGS
-	int posGammaCorrection = 320 - _vm->_mainFont->getStringWidth(textGammaCorrection) / 2;
-	int posDark = 178 - _vm->_mainFont->getStringWidth(textDark);
+	int posGammaCorrection = 320 - _vm->getMainFont()->getStringWidth(textGammaCorrection) / 2;
+	int posDark = 178 - _vm->getMainFont()->getStringWidth(textDark);
 #endif
 
 	_playerAgendaSelector->draw(surface);
 
-	_vm->_mainFont->drawString(&surface, textConversationChoices, posConversationChoices, 280, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textConversationChoices, posConversationChoices, 280, surface.w, surface.format.RGBToColor(232, 208, 136));
 
-	_vm->_mainFont->drawString(&surface, textMusic, posMusic, 150, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, textSoft, posSoft, 161, surface.w, surface.format.RGBToColor(216, 184, 112));
-	_vm->_mainFont->drawString(&surface, textLoud, 462, 161, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textMusic, posMusic, 150, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textSoft, posSoft, 161, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textLoud, 462, 161, surface.w, surface.format.RGBToColor(216, 184, 112));
 
-	_vm->_mainFont->drawString(&surface, textSoundEffects, posSoundEffects, 175, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, textSoft, posSoft, 186, surface.w, surface.format.RGBToColor(216, 184, 112));
-	_vm->_mainFont->drawString(&surface, textLoud, 462, 186, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textSoundEffects, posSoundEffects, 175, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textSoft, posSoft, 186, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textLoud, 462, 186, surface.w, surface.format.RGBToColor(216, 184, 112));
 
-	_vm->_mainFont->drawString(&surface, textAmbientSound, posAmbientSound, 200, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, textSoft, posSoft, 211, surface.w, surface.format.RGBToColor(216, 184, 112));
-	_vm->_mainFont->drawString(&surface, textLoud, 462, 211, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textAmbientSound, posAmbientSound, 200, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textSoft, posSoft, 211, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textLoud, 462, 211, surface.w, surface.format.RGBToColor(216, 184, 112));
 
-	_vm->_mainFont->drawString(&surface, textSpeech, posSpeech, 225, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, textSoft, posSoft, 236, surface.w, surface.format.RGBToColor(216, 184, 112));
-	_vm->_mainFont->drawString(&surface, textLoud, 462, 236, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textSpeech, posSpeech, 225, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textSoft, posSoft, 236, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textLoud, 462, 236, surface.w, surface.format.RGBToColor(216, 184, 112));
 
 #if BLADERUNNER_ORIGINAL_SETTINGS
-	_vm->_mainFont->drawString(&surface, textGammaCorrection, posGammaCorrection, 250, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, textDark, posDark, 261, surface.w, surface.format.RGBToColor(216, 184, 112));
-	_vm->_mainFont->drawString(&surface, textLight, 462, 261, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textGammaCorrection, posGammaCorrection, 250, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textDark, posDark, 261, surface.w, surface.format.RGBToColor(216, 184, 112));
+	_vm->getMainFont()->drawString(&surface, textLight, 462, 261, surface.w, surface.format.RGBToColor(216, 184, 112));
 #endif
 
-	_vm->_mainFont->drawString(&surface, textDesignersCut, 192, 365, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, textDesignersCut, 192, 365, surface.w, surface.format.RGBToColor(232, 208, 136));
 
 	if (_vm->_subtitles->isSystemActive()) {
 		// Allow this to be loading as an extra text item in the resource for text options
@@ -319,16 +320,16 @@ void KIASectionSettings::draw(Graphics::Surface &surface) {
 			break;
 		}
 		// +2 to the max of original index of textOptions which is 41
-		const char *textSubtitles  = strcmp(_vm->_textOptions->getText(42), "") == 0 ? subtitlesTranslation : _vm->_textOptions->getText(42);
-		const char *textLanguageSelect = strcmp(_vm->_textOptions->getText(43), "") == 0 ? languageSelectTranslation : _vm->_textOptions->getText(43);
+		Common::U32String textSubtitles = (_vm->_textOptions->getText(42)[0] == '\0') ? Common::U32String(subtitlesTranslation) : _vm->_textOptions->getTextU32(42);
+		Common::U32String textLanguageSelect = (_vm->_textOptions->getText(43)[0] == '\0') ? Common::U32String(languageSelectTranslation) : _vm->_textOptions->getTextU32(43);
 		debug(9, "TODO: Implement _textLanguageDropdown for %s", textLanguageSelect);
 
 		if (_vm->_language == Common::RU_RUS) {
 			// special case for Russian version, put the option in a new line to avoid overlap
-			_vm->_mainFont->drawString(&surface, textSubtitles, 288, 376, surface.w, surface.format.RGBToColor(232, 208, 136));
+			_vm->getMainFont()->drawString(&surface, textSubtitles, 288, 376, surface.w, surface.format.RGBToColor(232, 208, 136));
 		} else {
 			// moved further to the right to avoid overlap with 'Designer's Cut' in some language versions (ESP)
-			_vm->_mainFont->drawString(&surface, textSubtitles, 323, 365, surface.w, surface.format.RGBToColor(232, 208, 136));
+			_vm->getMainFont()->drawString(&surface, textSubtitles, 323, 365, surface.w, surface.format.RGBToColor(232, 208, 136));
 		}
 
 		// Vertical Align with "Soft" label

@@ -57,9 +57,9 @@ void KIASectionHelp::open() {
 	_scrollBox->clearLines();
 
 	for (int i = 0; i < textResource.getCount(); ++i) {
-		Common::String textLine = textResource.getText(i);
+		Common::U32String textLine = textResource.getTextU32(i);
 		int flags = 0x04;
-		if (textLine.firstChar() == ' ') {
+		if (!textLine.empty() && textLine[0] == ' ') {
 			flags = 0x00;
 		}
 		_scrollBox->addLine(textLine, -1, flags);

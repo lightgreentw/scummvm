@@ -26,6 +26,7 @@
 
 #include "common/array.h"
 #include "common/str.h"
+#include "common/ustr.h"
 
 #include "graphics/surface.h"
 
@@ -39,12 +40,18 @@ class TextResource;
 class DialogueMenu {
 	static const int kMaxItems = 10;
 	static const int kMaxRepeatHistory = 100;
-	static const int kLineHeight = 9;
 	static const int kBorderSize = 10;
 
+	// Extra pixels added on top of the border shape's own height to make
+	// each row taller. 0 = exact shape height (original look, no gaps).
+	// Increase this (e.g. 4 or 8) to give more vertical breathing room
+	// between dialogue options. darkenRect() will automatically fill the
+	// extra area so no raw scene pixels show through.
+	static const int kLineHeightExtra = 0;
+
 	struct DialogueItem {
-		Common::String text;
-		int            answerValue;
+		Common::U32String text;   // UTF-8 decoded for CJK + TTF rendering
+		int               answerValue;
 		int            colorIntensity;
 		int            priorityPolite;
 		int            priorityNormal;
@@ -75,6 +82,7 @@ class DialogueMenu {
 	DialogueItem  _items[kMaxItems];
 
 	int           _fadeInItemIndex;
+	int           _lineHeight;   // set in show(), derived from UI font height
 
 public:
 	DialogueMenu(BladeRunnerEngine *vm);

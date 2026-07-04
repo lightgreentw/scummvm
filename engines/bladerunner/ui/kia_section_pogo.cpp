@@ -259,7 +259,7 @@ void KIASectionPogo::draw(Graphics::Surface &surface) {
 	}
 
 	const char *title = "We 3 coders give special thanks to:";
-	_vm->_mainFont->drawString(&surface, title, 313 - _vm->_mainFont->getStringWidth(title) / 2, 143, surface.w, surface.format.RGBToColor(240, 232, 192));
+	_vm->getMainFont()->drawString(&surface, title, 313 - _vm->getMainFont()->getStringWidth(title) / 2, 143, surface.w, surface.format.RGBToColor(240, 232, 192));
 
 	int y = 158;
 	int lineTextWidth;
@@ -270,7 +270,7 @@ void KIASectionPogo::draw(Graphics::Surface &surface) {
 			} else {
 				_lineTexts[i] = _strings[_stringIndex];
 				_lineTimeouts[i] = 63;
-				 lineTextWidth = _vm->_mainFont->getStringWidth(_lineTexts[i]);
+				 lineTextWidth = _vm->getMainFont()->getStringWidth(_lineTexts[i]);
 				_lineOffsets[i] = _vm->_rnd.getRandomNumberRng(0, (306 -  lineTextWidth) > 0 ? (306 - lineTextWidth) : 0) + 155;
 
 				_stringIndex = (_stringIndex + 1) % kStringCount;
@@ -283,7 +283,7 @@ void KIASectionPogo::draw(Graphics::Surface &surface) {
 				colorIndex = 63 - colorIndex;
 			}
 			colorIndex /= 2;
-			_vm->_mainFont->drawString(&surface, _lineTexts[i], _lineOffsets[i], y, surface.w, surface.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
+			_vm->getMainFont()->drawString(&surface, _lineTexts[i], _lineOffsets[i], y, surface.w, surface.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
 		}
 		y += 10;
 	}

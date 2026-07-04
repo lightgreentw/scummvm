@@ -40,6 +40,33 @@ class TextResource;
 class Subtitles {
 	friend class Debugger;
 	friend class KIASectionSettings;
+
+public:
+	// Declared at the top of the class so they are visible to both
+	// private members (SubtitlesInfo _subtitlesInfo) and external callers
+	// (BladeRunnerEngine reading font info for TTF UI font support).
+	enum SubtitlesFontType {
+		kSubtitlesFontTypeInternal,
+		kSubtitlesFontTypeTTF
+	};
+
+	struct SubtitlesInfo {
+		Common::String    versionStr;
+		Common::String    dateOfCompile;
+		Common::String    languageMode;
+		Common::String    credits;
+		SubtitlesFontType fontType;
+		Common::String    fontName;
+
+		SubtitlesInfo() : versionStr(""), dateOfCompile(""), languageMode(""), credits(""), fontName("")  { fontType = kSubtitlesFontTypeInternal; };
+	};
+
+	enum SubtitlesRole {
+		kSubtitlesPrimary,
+		kSubtitlesSecondary
+	};
+
+private:
 	//
 	// Subtitles could be in 6 possible languages are EN_ANY, DE_DEU, FR_FRA, IT_ITA, RU_RUS, ES_ESP
 	// with corresponding _vm->_languageCode values: "E", "G", "F", "I", "E", "S" (Russian version is built on top of English one)
@@ -72,36 +99,13 @@ class Subtitles {
 
 	BladeRunnerEngine *_vm;
 
-	enum SubtitlesFontType {
-		kSubtitlesFontTypeInternal,
-		kSubtitlesFontTypeTTF
-	};
-
-	struct SubtitlesInfo {
-		Common::String    versionStr;
-		Common::String    dateOfCompile;
-		Common::String    languageMode;
-		Common::String    credits;
-		SubtitlesFontType fontType;
-		Common::String    fontName;
-
-		SubtitlesInfo() : versionStr(""), dateOfCompile(""), languageMode(""), credits(""), fontName("")  { fontType = kSubtitlesFontTypeInternal; };
-	};
-
 	struct SubtitlesData {
 		bool isVisible;
 		bool forceShowWhenNoSpeech;
-		// U32String for when we use an external font that supports UTF-32 encoding
 		Common::U32String currentText32;
 		Common::U32String prevText32;
 		Common::Array<Common::U32String> lines32;
 
-		// For now, we're using the original game's FON format for native font
-		// and the original MIX for file for text resources.
-		// This means that when not explicitly using an external font,
-		// the text resources are in extended ASCII format that index the native font FON.
-		// FUTURE On a next revision we should support UTF-8 text in the MIX files which
-		// would work with external font.
 		Common::String currentText;
 		Common::String prevText;
 		Common::Array<Common::String> lines;
@@ -113,7 +117,6 @@ class Subtitles {
 		Common::String quote;
 		uint32 timeStarted;
 		uint32 duration;
-		//uint8 subsRole; // only support secondary subtitles to be queued
 		bool  started;
 
 		SubtitlesQueueEntry() : timeStarted(0), duration(kMinDuration), started(false) { };
@@ -132,8 +135,8 @@ class Subtitles {
 	Common::String                      _excTitlStr;
 	Common::String                      _goVib;
 
-	bool _gameSubsResourceEntriesFound[kMaxTextResourceEntries]; // false if a TRE file did not open successfully
-	bool _isSystemActive;                                        // true if the whole subtitles subsystem should be disabled (due to missing required resources)
+	bool _gameSubsResourceEntriesFound[kMaxTextResourceEntries];
+	bool _isSystemActive;
 
 public:
 	Subtitles(BladeRunnerEngine *vm);
@@ -143,10 +146,10 @@ public:
 
 	void init();
 	SubtitlesInfo getSubtitlesInfo() const;
-	void loadInGameSubsText(int actorId, int speech_id);                     // get the text for actorId, quoteId (in-game subs)
-	void loadOuttakeSubsText(const Common::String &outtakesName, int frame); // get the text for this frame if any
+	void loadInGameSubsText(int actorId, int speech_id);
+	void loadOuttakeSubsText(const Common::String &outtakesName, int frame);
 
-	void setGameSubsText(int subsRole, Common::String dbgQuote, bool force); // for debugging - explicit set subs text
+	void setGameSubsText(int subsRole, Common::String dbgQuote, bool force);
 	void addGameSubsTextToQueue(Common::String dbgQuote, uint32 duration);
 	void clearQueue();
 
@@ -161,11 +164,6 @@ public:
 	bool isVisible(int subsRole) const;
 	void tick(Graphics::Surface &s);
 	void tickOuttakes(Graphics::Surface &s);
-
-	enum SubtitlesRole {
-		kSubtitlesPrimary,
-		kSubtitlesSecondary
-	};
 
 private:
 	void draw(Graphics::Surface &s);

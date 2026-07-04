@@ -23,6 +23,7 @@
 #define BLADERUNNER_CRIMES_DATABASE_H
 
 #include "common/array.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -48,6 +49,7 @@ public:
 	int getAssetType(int clueId) const;
 
 	const char *getClueText(int clueId) const;
+	Common::U32String getClueTextU32(int clueId) const;
 
 	void save(SaveFileWriteStream &f);
 	void load(SaveFileReadStream &f);

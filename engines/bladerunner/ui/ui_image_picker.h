@@ -25,6 +25,7 @@
 #include "common/array.h"
 #include "common/rect.h"
 #include "common/str.h"
+#include "common/ustr.h"
 
 namespace Graphics {
 struct Surface;
@@ -44,7 +45,7 @@ class UIImagePicker {
 		const Shape    *shapeUp;
 		const Shape    *shapeHovered;
 		const Shape    *shapeDown;
-		Common::String  tooltip;
+		Common::U32String tooltip;
 	};
 
 	BladeRunnerEngine *_vm;

@@ -27,6 +27,7 @@
 #include "bladerunner/text_resource.h"
 #include "bladerunner/time.h"
 #include "bladerunner/ui/kia.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -82,9 +83,9 @@ void KIASectionDiagnostic::draw(Graphics::Surface &surface) {
 				colorIndex = (365 - y) / 2;
 			}
 
-			const char *text = _text->getText(i);
-			if (text) {
-				_vm->_mainFont->drawString(&surface, text, 320 - _vm->_mainFont->getStringWidth(text) / 2, y, surface.w, surface.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
+			Common::U32String text = _text->getTextU32(i);
+			if (!text.empty()) {
+				_vm->getMainFont()->drawString(&surface, text, 320 - _vm->getMainFont()->getStringWidth(text) / 2, y, surface.w, surface.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
 			}
 		}
 	}

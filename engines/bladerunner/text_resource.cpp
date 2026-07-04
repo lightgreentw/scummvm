@@ -25,6 +25,7 @@
 
 #include "common/debug.h"
 #include "common/util.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
@@ -105,16 +106,24 @@ const char *TextResource::getText(uint32 id) const {
 	return "";
 }
 
+// Decode the UTF-8 string as a U32String so that TTF drawString
+// handles each CJK character as a single Unicode codepoint.
+// U32String(const char*, CodePage) defaults to kUtf8.
+Common::U32String TextResource::getTextU32(uint32 id) const {
+	return Common::U32String(getText(id));
+}
+
 const char *TextResource::getOuttakeTextByFrame(uint32 frame) const {
 	for (uint32 i = 0; i != _count; ++i) {
-		//debug("Checking %d - so within: %d , %d", _ids[i], (0x0000FFFF & _ids[i]), ((_ids[i] >> 16) & 0x0000FFFF ) );
-		if ((frame >= (0x0000FFFF & _ids[i]) )   && (frame <  ((_ids[i] >> 16) & 0x0000FFFF ) )) {
-			// we found an id with lower 16bits smaller or equal to our frame key
-			// and with higher 16 bits higher than the frame key
+		if ((frame >= (0x0000FFFF & _ids[i])) && (frame < ((_ids[i] >> 16) & 0x0000FFFF))) {
 			return _strings + _offsets[i];
 		}
 	}
 	return "";
+}
+
+Common::U32String TextResource::getOuttakeTextU32ByFrame(uint32 frame) const {
+	return Common::U32String(getOuttakeTextByFrame(frame));
 }
 
 int TextResource::getCount() const {

@@ -28,13 +28,13 @@
 #include "common/array.h"
 #include "common/rect.h"
 #include "common/str.h"
+#include "common/ustr.h"
 
 namespace BladeRunner {
 
 typedef void UIScrollBoxClickedCallback(void *callbackData, void *source, int lineData, int mouseButton);
 
 class UIScrollBox : public UIComponent {
-	static const int kLineHeight = 10;
 	static const Color256 k3DFrameColors[];
 	static const Color256 kTextBackgroundColors[];
 	static const Color256 kTextColors1[];
@@ -42,8 +42,16 @@ class UIScrollBox : public UIComponent {
 	static const Color256 kTextColors3[];
 	static const Color256 kTextColors4[];
 
+	// Line height in pixels, derived from the active main UI font's height
+	// (plus a little padding) at construction time. This replaces the old
+	// hardcoded "static const int kLineHeight = 10" so that increasing the
+	// UI font size (see BladeRunnerEngine::kUIFontSize) automatically grows
+	// row spacing, checkbox centering, and mouse hit-testing together.
+	int _lineHeight;
+	int _lineHeightOverride; // if > 0, bypass font-derived height (set at construction)
+
 	struct Line {
-		Common::String text;
+		Common::U32String text;   // Changed from Common::String to support CJK via UTF-8 decode
 		int    lineData;
 		int    flags;
 		uint32 checkboxFrame;
@@ -99,7 +107,8 @@ public:
 	            int style,
 	            bool center,
 	            Common::Rect rect,
-	            Common::Rect scrollBarRect);
+	            Common::Rect scrollBarRect,
+	            int lineHeightOverride = 0); // 0 = auto from font; >0 = fixed px
 
 	~UIScrollBox() override;
 
@@ -125,14 +134,14 @@ public:
 	int    getBoxLeft();
 	uint16 getBoxWidth();
 
-
 	void clearLines();
 	void addLine(const Common::String &text, int lineData, int flags);
+	void addLine(const Common::U32String &text, int lineData, int flags);
 	void addLine(const char *text, int lineData, int flags);
 	void sortLines();
 
 	int getSelectedLineData();
-	Common::String getLineText(int lineData);
+	Common::U32String getLineText(int lineData);
 	int getMaxLinesVisible();
 	int getLineCount();
 
