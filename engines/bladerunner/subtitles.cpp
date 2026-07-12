@@ -589,7 +589,7 @@ void Subtitles::draw(Graphics::Surface &s) {
 			_xcTimeLast = timeNow;
 		}
 
-		_vm->_mainFont->drawString(&s, _excTitlStr, 313 - _vm->_mainFont->getStringWidth(_excTitlStr) / 2, 143, s.w, s.format.RGBToColor(240, 232, 192));
+		_vm->getMainFont()->drawString(&s, _excTitlStr, 313 - _vm->getMainFont()->getStringWidth(_excTitlStr) / 2, 143, s.w, s.format.RGBToColor(240, 232, 192));
 
 		int y = 158;
 		int lineTextWidth;
@@ -600,7 +600,7 @@ void Subtitles::draw(Graphics::Surface &s) {
 				} else {
 					_xcLineTexts[i] = _xcStrings[_xcStringIndex];
 					_xcLineTimeouts[i] = 63;
-					lineTextWidth = _vm->_mainFont->getStringWidth(_xcLineTexts[i]);
+					lineTextWidth = _vm->getMainFont()->getStringWidth(_xcLineTexts[i]);
 					_xcLineOffsets[i] = _vm->_rnd.getRandomNumberRng(0, (306 -  lineTextWidth) > 0 ? (306 - lineTextWidth) : 0) + 155;
 
 					_xcStringIndex = (_xcStringIndex + 1) % kxcStringCount;
@@ -613,7 +613,7 @@ void Subtitles::draw(Graphics::Surface &s) {
 					colorIndex = 63 - colorIndex;
 				}
 				colorIndex /= 2;
-				_vm->_mainFont->drawString(&s, _xcLineTexts[i], _xcLineOffsets[i], y, s.w, s.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
+				_vm->getMainFont()->drawString(&s, _xcLineTexts[i], _xcLineOffsets[i], y, s.w, s.format.RGBToColor(kTextColors[colorIndex].r, kTextColors[colorIndex].g, kTextColors[colorIndex].b));
 			}
 			y += 10;
 		}

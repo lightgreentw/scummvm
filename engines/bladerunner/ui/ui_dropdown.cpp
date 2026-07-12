@@ -124,14 +124,14 @@ void UIDropDown::draw(Graphics::Surface &surface) {
 		return;
 	}
 
-	int posStartOfSelectedLineDesc = _controlLeftX + _vm->_mainFont->getStringWidth(_labelStr) + _vm->_mainFont->getCharWidth(' ');
-	_vm->_mainFont->drawString(&surface, _labelStr, _controlLeftX, _lineSelectorFrameRect.top, surface.w, surface.format.RGBToColor(232, 208, 136));
-	_vm->_mainFont->drawString(&surface, _lineSelectedStr,
+	int posStartOfSelectedLineDesc = _controlLeftX + _vm->getMainFont()->getStringWidth(_labelStr) + _vm->getMainFont()->getCharWidth(' ');
+	_vm->getMainFont()->drawString(&surface, _labelStr, _controlLeftX, _lineSelectorFrameRect.top, surface.w, surface.format.RGBToColor(232, 208, 136));
+	_vm->getMainFont()->drawString(&surface, _lineSelectedStr,
 		                        posStartOfSelectedLineDesc,
 		                        _lineSelectorFrameRect.top, surface.w, surface.format.RGBToColor(240, 232, 192));
 
 	// TODO add a clipping for description field here
-	int posEndOfSelectedLineDesc = posStartOfSelectedLineDesc + _vm->_mainFont->getStringWidth(_lineSelectedStr) + _vm->_mainFont->getCharWidth(' ');
+	int posEndOfSelectedLineDesc = posStartOfSelectedLineDesc + _vm->getMainFont()->getStringWidth(_lineSelectedStr) + _vm->getMainFont()->getCharWidth(' ');
 
 	_lineDropdownBtn->setImageLeft(0, posEndOfSelectedLineDesc );
 
@@ -193,12 +193,12 @@ void UIDropDown::clearLines() {
 
 void UIDropDown::addLine(const Common::String &text, int lineData) {
 	_lineSelectorScrollBox->addLine(text, lineData, 0x08);
-	_lineSelectorScrollBoxMaxLineWidth = MAX(_vm->_mainFont->getStringWidth(text), _lineSelectorScrollBoxMaxLineWidth);
+	_lineSelectorScrollBoxMaxLineWidth = MAX(_vm->getMainFont()->getStringWidth(text), _lineSelectorScrollBoxMaxLineWidth);
 }
 
 void UIDropDown::addLine(const char *text, int lineData) {
 	_lineSelectorScrollBox->addLine(text, lineData, 0x08);
-	_lineSelectorScrollBoxMaxLineWidth = MAX(_vm->_mainFont->getStringWidth(text), _lineSelectorScrollBoxMaxLineWidth);
+	_lineSelectorScrollBoxMaxLineWidth = MAX(_vm->getMainFont()->getStringWidth(text), _lineSelectorScrollBoxMaxLineWidth);
 }
 
 void UIDropDown::sortLines() {
@@ -310,7 +310,7 @@ void UIDropDown::showSelectionDropdown(bool showToggle) {
 		_lineSelectorScrollBox->setBoxTop(_lineSelectorFrameRect.bottom);
 		_lineSelectorScrollBox->setBoxLeft(_lineDropdownBtn->getImageLeft(1));
 		// TODO width should be retrieved from the maximum width of a language description in SUBTITLES.MIX (or a max width to clip to)
-		_lineSelectorScrollBox->setBoxWidth(MAX(_lineDropdownBtn->getImageWidth(1), _lineSelectorScrollBoxMaxLineWidth + _vm->_mainFont->getCharWidth(' ')));
+		_lineSelectorScrollBox->setBoxWidth(MAX(_lineDropdownBtn->getImageWidth(1), _lineSelectorScrollBoxMaxLineWidth + _vm->getMainFont()->getCharWidth(' ')));
 
 		if (_lineDropdownBtn->getImageLeft(0) < kFurthestLeftForScrollBar) {
 			// CLIP expects the first boundary argument to be the min of the two.

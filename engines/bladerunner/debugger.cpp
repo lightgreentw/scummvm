@@ -2594,7 +2594,7 @@ void Debugger::drawSceneObjects() {
 					//const Common::Rect &screenRect = actor->getScreenRectangle();
 					//_vm->_surfaceFront.frameRect(screenRect, color);
 					_vm->_surfaceFront.frameRect(sceneObject->screenRectangle, color);
-					_vm->_mainFont->drawString(&_vm->_surfaceFront, _vm->_textActorNames->getText(actor->getId()), pos.x, pos.y, _vm->_surfaceFront.w, color);
+					_vm->getMainFont()->drawString(&_vm->_surfaceFront, _vm->_textActorNames->getText(actor->getId()), pos.x, pos.y, _vm->_surfaceFront.w, color);
 				}
 				break;
 			case kSceneObjectTypeItem:
@@ -2605,7 +2605,7 @@ void Debugger::drawSceneObjects() {
 					drawBBox(a, b, _vm->_view, &_vm->_surfaceFront, color);
 					Common::String itemText = Common::String::format("item %i", sceneObject->id - kSceneObjectOffsetItems);
 					_vm->_surfaceFront.frameRect(sceneObject->screenRectangle, color);
-					_vm->_mainFont->drawString(&_vm->_surfaceFront, itemText, pos.x, pos.y, _vm->_surfaceFront.w, color);
+					_vm->getMainFont()->drawString(&_vm->_surfaceFront, itemText, pos.x, pos.y, _vm->_surfaceFront.w, color);
 				}
 				break;
 			case kSceneObjectTypeObject:
@@ -2618,7 +2618,7 @@ void Debugger::drawSceneObjects() {
 					}
 					drawBBox(a, b, _vm->_view, &_vm->_surfaceFront, color);
 					_vm->_surfaceFront.frameRect(sceneObject->screenRectangle, color);
-					_vm->_mainFont->drawString(&_vm->_surfaceFront, _vm->_scene->objectGetName(sceneObject->id - kSceneObjectOffsetObjects), pos.x, pos.y, _vm->_surfaceFront.w, color);
+					_vm->getMainFont()->drawString(&_vm->_surfaceFront, _vm->_scene->objectGetName(sceneObject->id - kSceneObjectOffsetObjects), pos.x, pos.y, _vm->_surfaceFront.w, color);
 				}
 				break;
 			}
@@ -2655,7 +2655,7 @@ void Debugger::drawLights() {
 
 			_vm->_surfaceFront.drawLine(posOriginT.x, posOriginT.y, posTargetT.x, posTargetT.y, color);
 
-			_vm->_mainFont->drawString(&_vm->_surfaceFront, light->_name, posOriginT.x, posOriginT.y, _vm->_surfaceFront.w, color);
+			_vm->getMainFont()->drawString(&_vm->_surfaceFront, light->_name, posOriginT.x, posOriginT.y, _vm->_surfaceFront.w, color);
 		}
 	}
 }
@@ -2691,7 +2691,7 @@ void Debugger::drawFogs() {
 			// TODO: draw line only for cone fogs, draw boxes or circles for the other types
 			_vm->_surfaceFront.drawLine(posOriginT.x, posOriginT.y, posTargetT.x, posTargetT.y, color);
 
-			_vm->_mainFont->drawString(&_vm->_surfaceFront, fog->_name, posOriginT.x, posOriginT.y, _vm->_surfaceFront.w, color);
+			_vm->getMainFont()->drawString(&_vm->_surfaceFront, fog->_name, posOriginT.x, posOriginT.y, _vm->_surfaceFront.w, color);
 		}
 		fog = fog->_next;
 	}
@@ -2742,7 +2742,7 @@ void Debugger::drawWaypoints() {
 				drawBBox(pos - size, pos + size, _vm->_view, &_vm->_surfaceFront, color);
 				Vector3 spos = _vm->_view->calculateScreenPosition(pos);
 				Common::String waypointText = Common::String::format("waypoint %i", i);
-				_vm->_mainFont->drawString(&_vm->_surfaceFront, waypointText, spos.x, spos.y, _vm->_surfaceFront.w, color);
+				_vm->getMainFont()->drawString(&_vm->_surfaceFront, waypointText, spos.x, spos.y, _vm->_surfaceFront.w, color);
 			}
 		}
 	}
@@ -2763,7 +2763,7 @@ void Debugger::drawWaypoints() {
 				drawBBox(pos - size, pos + size, _vm->_view, &_vm->_surfaceFront, color);
 				Vector3 spos = _vm->_view->calculateScreenPosition(pos);
 				Common::String coverText = Common::String::format("cover %i", i);
-				_vm->_mainFont->drawString(&_vm->_surfaceFront, coverText, spos.x, spos.y, _vm->_surfaceFront.w, color);
+				_vm->getMainFont()->drawString(&_vm->_surfaceFront, coverText, spos.x, spos.y, _vm->_surfaceFront.w, color);
 			}
 		}
 	}
@@ -2784,7 +2784,7 @@ void Debugger::drawWaypoints() {
 				drawBBox(pos - size, pos + size, _vm->_view, &_vm->_surfaceFront, color);
 				Vector3 spos = _vm->_view->calculateScreenPosition(pos);
 				Common::String fleeText = Common::String::format("flee %i", i);
-				_vm->_mainFont->drawString(&_vm->_surfaceFront, fleeText, spos.x, spos.y, _vm->_surfaceFront.w, color);
+				_vm->getMainFont()->drawString(&_vm->_surfaceFront, fleeText, spos.x, spos.y, _vm->_surfaceFront.w, color);
 			}
 		}
 	}
@@ -2802,7 +2802,7 @@ void Debugger::drawWalkboxes() {
 				Vector3 end = _vm->_view->calculateScreenPosition(walkbox->vertices[(j + 1) % walkbox->vertexCount]);
 				_vm->_surfaceFront.drawLine(start.x, start.y, end.x, end.y, _vm->_surfaceFront.format.RGBToColor(255, 255, 0));
 				Vector3 pos = _vm->_view->calculateScreenPosition(0.5 * (walkbox->vertices[j] + walkbox->vertices[(j + 1) % walkbox->vertexCount]));
-				_vm->_mainFont->drawString(&_vm->_surfaceFront, walkbox->name, pos.x, pos.y, _vm->_surfaceFront.w, _vm->_surfaceFront.format.RGBToColor(255, 255, 0));
+				_vm->getMainFont()->drawString(&_vm->_surfaceFront, walkbox->name, pos.x, pos.y, _vm->_surfaceFront.w, _vm->_surfaceFront.format.RGBToColor(255, 255, 0));
 			}
 		}
 	}

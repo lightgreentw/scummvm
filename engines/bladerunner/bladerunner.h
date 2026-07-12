@@ -187,7 +187,7 @@ public:
 	// the main UI font. Negative values shift glyphs UP; positive shift DOWN.
 	// Tune this if Latin or CJK characters appear too high or too low in the
 	// UI list rows. Start with small values like -2 or -3.
-	static const int    kUIFontYOffset = -3;
+	static const int    kUIFontYOffset = -5;
 	Graphics::Font *getMainFont() const;
 	
 	Subtitles          *_subtitles;
