@@ -9,4 +9,4 @@ cd scummvm
 ./configure && make
 
 詳細技術說明與字幕工具請見獨立專案：
-https://github.com/lightgreentw/bladerunner-zh-tw
+https://github.com/lightgreentw/bladerunner_CHT
