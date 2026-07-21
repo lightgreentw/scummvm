@@ -642,6 +642,50 @@ const char *KIA::scrambleSuspectsName(const char *name) {
 	unsigned char *bufferPtr = (unsigned char *)buffer;
 	const unsigned char *namePtr = (const unsigned char *)name;
 
+	// If the name contains any UTF-8 multi-byte sequence (e.g. Traditional
+	// Chinese suspect names), the original per-byte ASCII scramble below
+	// would treat every byte as "not a letter" (Common::isAlpha() is false
+	// for all UTF-8 continuation/lead bytes) and always emit '0', producing
+	// a useless constant "00-0000" placeholder instead of a scrambled code.
+	// In that case, reuse the engine's own MIXArchive::getHash() (the same
+	// Westwood checksum already used throughout the engine for MIX/TLK
+	// resource lookup) on the raw name bytes to get a deterministic value.
+	// Pure-ASCII names (the original English game data) are completely
+	// unaffected and still use the original algorithm below.
+	bool hasMultibyte = false;
+	for (const unsigned char *p = namePtr; *p; ++p) {
+		if (*p >= 0x80) {
+			hasMultibyte = true;
+			break;
+		}
+	}
+
+	if (hasMultibyte) {
+		uint32 h = (uint32)MIXArchive::getHash(Common::String(name));
+		// MIXArchive::getHash()'s simple rotate-and-add checksum can leave
+		// long runs of identical bits for structurally similar short inputs
+		// (e.g. Chinese names, which all use UTF-8 bytes from a narrow
+		// range), producing placeholder codes like "C9-EFFF" with repeated
+		// trailing digits. Apply a standard integer avalanche mix (the
+		// MurmurHash3 finalizer, pure arithmetic, no new includes/functions)
+		// so the extracted hex digits are well distributed instead.
+		h ^= h >> 16;
+		h *= 0x85ebca6bU;
+		h ^= h >> 13;
+		h *= 0xc2b2ae35U;
+		h ^= h >> 16;
+
+		static const char kHexDigits[] = "0123456789ABCDEF";
+		for (int i = 0; i < 6; ++i) {
+			*bufferPtr++ = kHexDigits[(h >> (i * 4)) & 0xF];
+			if (i == 1) {
+				*bufferPtr++ = '-';
+			}
+		}
+		*bufferPtr = 0;
+		return buffer;
+	}
+
 	for (int i = 0 ; i < 6; ++i) {
 		if (_vm->_language == Common::RU_RUS && _vm->_russianCP1251) {
 			// Algorithm added by Siberian Studio in R4 patch
