@@ -27,7 +27,7 @@ jobs:
           update: true
           install: >-
             git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-pkgconf
-            mingw-w64-x86_64-SDL2 mingw-w64-x86_64-libpng mingw-w64-x86_64-jpeg-turbo
+            mingw-w64-x86_64-SDL2 mingw-w64-x86_64-libpng mingw-w64-x86_64-libjpeg-turbo
             mingw-w64-x86_64-freetype mingw-w64-x86_64-zlib mingw-w64-x86_64-libogg
             mingw-w64-x86_64-libvorbis mingw-w64-x86_64-libtheora mingw-w64-x86_64-flac
 
@@ -39,7 +39,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cxxflags="-Os" \
+            --extra-cflags="-Os" \
             --extra-ldflags="-static"
           make -j$(nproc)
           strip scummvm.exe
@@ -79,7 +79,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cxxflags="-Os"
+            --extra-cflags="-Os"
           make -j$(nproc)
           strip scummvm
 
@@ -118,7 +118,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cxxflags="-Os"
+            --extra-cflags="-Os"
           make -j$(sysctl -n hw.ncpu)
           strip scummvm
 
