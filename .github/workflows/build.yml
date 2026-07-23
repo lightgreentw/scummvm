@@ -30,13 +30,13 @@ jobs:
             mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-libpng mingw-w64-ucrt-x86_64-libjpeg-turbo
             mingw-w64-ucrt-x86_64-freetype mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-libogg
             mingw-w64-ucrt-x86_64-libvorbis mingw-w64-ucrt-x86_64-libtheora mingw-w64-ucrt-x86_64-flac
-            mingw-w64-ucrt-x86_64-bzip2
+            mingw-w64-ucrt-x86_64-bzip2 mingw-w64-ucrt-x86_64-harfbuzz mingw-w64-ucrt-x86_64-brotli
 
       - name: 專用引擎配置與靜態編譯
         run: |
           CXXFLAGS="-Os" \
           LIBS="-lbz2" \
-          LDFLAGS="-static -lbz2" \
+          LDFLAGS="-static" \
           ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
