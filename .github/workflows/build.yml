@@ -26,23 +26,24 @@ jobs:
           msystem: UCRT64
           update: true
           install: >-
-            git make mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-pkgconf
-            mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-libpng mingw-w64-ucrt-x86_64-libjpeg-turbo
-            mingw-w64-ucrt-x86_64-freetype mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-libogg
-            mingw-w64-ucrt-x86_64-libvorbis mingw-w64-ucrt-x86_64-libtheora mingw-w64-ucrt-x86_64-flac
-            mingw-w64-ucrt-x86_64-bzip2 mingw-w64-ucrt-x86_64-harfbuzz mingw-w64-ucrt-x86_64-brotli
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-freetype
+            mingw-w64-ucrt-x86_64-harfbuzz
+            mingw-w64-ucrt-x86_64-brotli
+            mingw-w64-ucrt-x86_64-bzip2
+            make
 
       - name: 專用引擎配置與靜態編譯
         run: |
-          CXXFLAGS="-Os" \
-          LIBS="-lbz2" \
-          LDFLAGS="-static -lharfbuzz -lbrotlidedec -lbrotlicommon -lbz2" \
           ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
             --enable-freetype2 \
             --disable-debug \
-            --enable-static
+            --enable-static \
+            --extra-cxxflags="-Os" \
+            --extra-libs="-lharfbuzz -lbrotlidedec -lbrotlicommon -lbz2"
           make -j$(nproc)
           strip scummvm.exe
 
