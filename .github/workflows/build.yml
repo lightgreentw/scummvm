@@ -39,7 +39,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cflags="-Os" \
+            --extra-cxxflags="-Os" \
             --extra-ldflags="-static"
           make -j$(nproc)
           strip scummvm.exe
@@ -79,7 +79,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cflags="-Os"
+            --extra-cxxflags="-Os"
           make -j$(nproc)
           strip scummvm
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: 安裝 macOS Homebrew 相依套件
         run: |
-          brew install sdl2 libpng jpeg freetype flac libogg libvorbis libtheora pkg-config
+          brew install sdl2 libpng jpeg freetype flac libogg libvorbis theora pkg-config
 
       - name: 專用引擎配置與編譯瘦身
         run: |
@@ -118,7 +118,7 @@ jobs:
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cflags="-Os"
+            --extra-cxxflags="-Os"
           make -j$(sysctl -n hw.ncpu)
           strip scummvm
 
