@@ -40,13 +40,13 @@ jobs:
 
       - name: 專用引擎配置與靜態編譯
         run: |
+          CXXFLAGS="-Os" \
           ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-cxxflags="-Os" \
             --extra-libs="-lharfbuzz -lbrotlidedec -lbrotlicommon -lbz2"
           make -j$(nproc)
           strip scummvm.exe
