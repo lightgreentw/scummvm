@@ -13,9 +13,6 @@ jobs:
     name: Build for Windows
     runs-on: windows-latest
 
-    env:
-      VCPKG_DEFAULT_TRIPLET: x64-windows
-
     defaults:
       run:
         shell: msys2 {0}
@@ -30,26 +27,38 @@ jobs:
           msystem: UCRT64
           update: true
           install: >-
+            base-devel
+            git
+            make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkgconf
             mingw-w64-ucrt-x86_64-freetype
             mingw-w64-ucrt-x86_64-harfbuzz
             mingw-w64-ucrt-x86_64-brotli
             mingw-w64-ucrt-x86_64-bzip2
-            make
+            mingw-w64-ucrt-x86_64-zlib
 
       - name: 專用引擎配置與靜態編譯
         run: |
-          CXXFLAGS="-Os" \
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig  
+          
+          CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
+          LDFLAGS="-Wl,--gc-sections -static" \
           ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
             --enable-freetype2 \
             --disable-debug \
             --enable-static \
-            --extra-libs="-lharfbuzz -lbrotlidedec -lbrotlicommon -lbz2"
+            --extra-libs="-lharfbuzz -lbrotlidec -lbrotlicommon -lbz2"
+
+      - name: Build
+        run: |            
           make -j$(nproc)
-          strip scummvm.exe
+
+      - name: Strip
+        run: |          
+          strip --strip-unneeded scummvm.exe
 
       - name: 打包 Windows 懶人包
         run: |
