@@ -6,16 +6,20 @@ on:
   pull_request:
     branches: [ "zh-tw-bladerunner" ]
   workflow_dispatch:
-
+    
 jobs:
   # ======== Windows 專用極簡建置 (UCRT64) ========
   build-windows:
     name: Build for Windows
     runs-on: windows-latest
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+
     defaults:
       run:
         shell: msys2 {0}
-        
+     
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
