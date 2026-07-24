@@ -40,17 +40,16 @@ jobs:
 
       - name: 專用引擎配置與靜態編譯
         run: |
-          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig  
-          
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
+
           CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
           LDFLAGS="-Wl,--gc-sections -static" \
           ./configure \
-            --disable-all-engines \
-            --enable-engine=bladerunner \
-            --enable-freetype2 \
-            --disable-debug \
-            --enable-static \
-            --extra-libs="-lharfbuzz -lbrotlidec -lbrotlicommon -lbz2"
+              --disable-all-engines \
+              --enable-engine=bladerunner \
+              --enable-freetype2 \
+              --disable-debug \
+              --enable-static
 
       - name: Build
         run: |            
