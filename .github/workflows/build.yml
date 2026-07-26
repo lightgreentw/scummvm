@@ -39,6 +39,14 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
+      - name: Debug pkg-config
+        shell: msys2 {0}
+        run: |
+          pkg-config --version
+          pkg-config --libs freetype2
+          pkg-config --libs --static freetype2
+          pkg-config --modversion freetype2
+
       - name: 專用引擎配置與靜態編譯
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
