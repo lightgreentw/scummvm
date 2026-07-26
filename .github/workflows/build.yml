@@ -39,14 +39,6 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: Debug pkg-config
-        shell: msys2 {0}
-        run: |
-          pkg-config --version
-          pkg-config --libs freetype2
-          pkg-config --libs --static freetype2
-          pkg-config --modversion freetype2
-
       - name: 專用引擎配置與靜態編譯
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
@@ -60,9 +52,36 @@ jobs:
               --disable-debug \
               --enable-static
 
+      - name: Debug pkg-config
+        shell: msys2 {0}
+        run: |
+          echo "===== pkg-config ====="
+          which pkg-config
+          pkg-config --version
+          
+          echo
+          echo "===== freetype pkg-config ====="
+          pkg-config --libs freetype2
+          pkg-config --libs --static freetype2
+          pkg-config --variable pc_path pkg-config
+
+          echo
+          echo "===== config.mk ====="
+          grep -i freetype config.mk || true
+          grep -i harfbuzz config.mk || true
+          grep -i brotli config.mk || true
+          grep -i bz2 config.mk || true
+
+      - name: Debug config.mk
+        shell: msys2 {0}
+        run: |
+          grep "^FREETYPE" config.mk || true
+          grep "^LIBS" config.mk || true
+          grep "^DEFINES" config.mk || true
+      
       - name: Build
         run: |            
-          make -j$(nproc)
+          make V=1 -j1
 
       - name: Strip
         run: |          
