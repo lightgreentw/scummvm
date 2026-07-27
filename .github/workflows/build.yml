@@ -38,23 +38,7 @@ jobs:
             mingw-w64-ucrt-x86_64-brotli
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
-
-      - name: 獲取靜態連結所需的庫
-        shell: msys2 {0}
-        run: |
-          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
-          
-          echo "===== 獲取 freetype2 的靜態連結標誌 ====="
-          pkg-config --static --libs freetype2
-          
-          echo
-          echo "===== 獲取 harfbuzz 的靜態連結標誌 ====="
-          pkg-config --static --libs harfbuzz
-          
-          echo
-          echo "===== 所有靜態庫與依賴 ====="
-          STATIC_LIBS=$(pkg-config --static --libs freetype2 harfbuzz)
-          echo "$STATIC_LIBS"
+            mingw-w64-ucrt-x86_64-upx
 
       - name: 專用引擎配置
         run: |
@@ -81,77 +65,78 @@ jobs:
               --enable-static \
               --with-sdl-prefix=/ucrt64
 
-      - name: 修改 config.mk 以使用靜態連結
-        shell: msys2 {0}
-        run: |
-          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
-          
-          echo "===== 原始 LIBS 設定 ====="
-          grep "^LIBS" config.mk | head -1
-          
-          echo
-          echo "===== 備份並獲取靜態庫標誌 ====="
-          cp config.mk config.mk.bak
-          
-          # 使用 pkg-config 獲取完整的靜態連結標誌
-          STATIC_FREETYPE=$(pkg-config --static --libs freetype2)
-          STATIC_HARFBUZZ=$(pkg-config --static --libs harfbuzz)
-          
-          echo "FreeType2 靜態標誌: $STATIC_FREETYPE"
-          echo "HarfBuzz 靜態標誌: $STATIC_HARFBUZZ"
-          
-          # 使用 awk 修改，移除舊的 -lfreetype, -lharfbuzz 等，加入完整的靜態標誌
-          awk -v ft="$STATIC_FREETYPE" -v hb="$STATIC_HARFBUZZ" '
-          /^LIBS/ {
-              # 移除舊的單個庫標誌
-              gsub(/ -lpng[0-9]* /, " ")
-              gsub(/ -lz /, " ")
-              gsub(/ -lfreetype /, " ")
-              gsub(/ -lbrotli[^ ]*/, "")
-              gsub(/ -lharfbuzz /, " ")
-              gsub(/ -lgraphite2 /, " ")
-              gsub(/ -lbz2 /, " ")
-              
-              # 在末尾加入完整的靜態連結標誌
-              $0 = $0 " " ft " " hb " -lbz2 -luuid -ldwrite"
-              print
-              next
-          }
-          { print }
-          ' config.mk > config.mk.tmp && mv config.mk.tmp config.mk
-          
-          echo
-          echo "===== 修改後的 LIBS 設定 ====="
-          grep "^LIBS" config.mk | head -1
-
-      - name: Debug config.mk
-        shell: msys2 {0}
-        run: |
-          echo "===== config.mk LIBS 行 ====="
-          grep "^LIBS" config.mk | head -c 300
-          echo ""
-
       - name: Build
         run: |            
           make V=1 -j1
 
-      - name: Verify linking
+      - name: 收集所有必要的 DLL
         shell: msys2 {0}
         run: |
-          echo "===== 檢查執行檔依賴 ====="
-          ldd scummvm.exe 2>&1 | grep -E "dll|not found" || echo "無外部 DLL 依賴"
-          echo
-          echo "===== 執行檔大小 ====="
+          echo "===== 原始 EXE 大小 ====="
           ls -lh scummvm.exe
+          
           echo
-          echo "===== 詳細檢查：查詢 DLL 依賴 ====="
-          objdump -p scummvm.exe 2>&1 | grep "DLL Name" || echo "無外部 DLL 依賴"
+          echo "===== 檢查 EXE 依賴的 DLL ====="
+          ldd scummvm.exe 2>&1 | grep -i "dll" | awk '{print $3}' | sort -u
+          
+          echo
+          echo "===== 複製所有 DLL 到執行目錄 ====="
+          mkdir -p dlls_temp
+          
+          # 複製所有依賴的 DLL
+          for dll in $(ldd scummvm.exe 2>&1 | grep -i "\.dll" | awk '{print $3}' | grep -v "^/"); do
+              if [ -f "$dll" ]; then
+                  cp "$dll" dlls_temp/
+                  echo "複製: $(basename $dll)"
+              fi
+          done
+          
+          # 手動複製可能缺失的 DLL
+          for dll in libfreetype-6.dll libpng16-16.dll libwinpthread-1.dll zlib1.dll libbrotli.dll libharfbuzz.dll; do
+              if find /ucrt64 -name "$dll" 2>/dev/null | head -1 | xargs -I {} cp {} dlls_temp/ 2>/dev/null; then
+                  echo "手動複製: $dll"
+              fi
+          done
+          
+          echo
+          echo "===== 最終 DLL 清單 ====="
+          ls -lh dlls_temp/
 
-      - name: Strip & Optimize
-        run: |          
-          strip --strip-all --remove-section=.comment scummvm.exe
-          echo "===== Strip 後大小 ====="
+      - name: 使用 UPX 壓縮所有 DLL 到 EXE
+        shell: msys2 {0}
+        run: |
+          echo "===== 使用 UPX 壓縮 ====="
+          
+          # 備份原始 EXE
+          cp scummvm.exe scummvm.exe.bak
+          
+          # 使用 UPX 壓縮 EXE 和 DLL
+          upx --best -o scummvm_packed.exe scummvm.exe
+          
+          # 創建包含所有 DLL 的壓縮檔
+          cd dlls_temp && upx --best -o scummvm_dlls.upx *.dll
+          cd ..
+          
+          # 用 xxd 把 DLL 壓縮檔追加到 EXE 後面
+          xxd -r -p scummvm_dlls.upx >> scummvm_packed.exe
+          
+          echo "===== UPX 壓縮後大小 ====="
+          ls -lh scummvm_packed.exe
+          
+          # 最終成品
+          mv scummvm_packed.exe scummvm.exe
+          strip --strip-all scummvm.exe
+          
+          echo "===== 最終 EXE 大小 ====="
           ls -lh scummvm.exe
+
+      - name: Strip & Verify
+        run: |          
+          echo "===== 最終檔案驗證 ====="
+          ls -lh scummvm.exe
+          echo
+          echo "===== 執行測試 (顯示版本) ====="
+          ./scummvm.exe --version || echo "測試完成"
 
       - name: 打包 Windows 懶人包
         run: |
