@@ -39,15 +39,6 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: 檢查靜態庫
-        shell: msys2 {0}
-        run: |
-          echo "===== 檢查靜態庫位置 ====="
-          ls -la /ucrt64/lib/libfreetype.a /ucrt64/lib/libpng16.a /ucrt64/lib/libz.a 2>&1 || echo "檢查完成"
-          echo
-          echo "===== 檢查 brotli 庫 ====="
-          ls -la /ucrt64/lib/libbrotli* 2>&1 | head -20
-
       - name: 專用引擎配置
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
@@ -83,37 +74,27 @@ jobs:
           echo "===== 備份並修改 ====="
           cp config.mk config.mk.bak
           
-          # 使用 Python 來安全地修改 config.mk
-          python3 << 'PYTHON_SCRIPT'
-          import re
-          
-          with open('config.mk', 'r') as f:
-              content = f.read()
-          
-          # 移除動態庫連結標誌
-          libs_line = re.search(r'^LIBS.*', content, re.MULTILINE)
-          if libs_line:
-              original_libs = libs_line.group(0)
-              print(f"原始: {original_libs[:100]}...")
-              
-              # 移除 -lpng16, -lz, -lfreetype, -lbrotli, -lharfbuzz
-              modified_libs = original_libs
-              modified_libs = re.sub(r' -lpng\d* ', ' ', modified_libs)
-              modified_libs = re.sub(r' -lz ', ' ', modified_libs)
-              modified_libs = re.sub(r' -lfreetype ', ' ', modified_libs)
-              modified_libs = re.sub(r' -lbrotli[^ ]*', '', modified_libs)
-              modified_libs = re.sub(r' -lharfbuzz ', ' ', modified_libs)
-              
-              # 在前面加入靜態庫路徑
+          # 使用 awk 來直接修改
+          awk '
+          BEGIN {
               static_libs = "/ucrt64/lib/libfreetype.a /ucrt64/lib/libpng16.a /ucrt64/lib/libz.a /ucrt64/lib/libharfbuzz.a"
-              modified_libs = modified_libs.replace('LIBS +=', f'LIBS += {static_libs}')
+          }
+          /^LIBS/ {
+              # 移除舊的動態庫標誌
+              gsub(/ -lpng[0-9]* /, " ")
+              gsub(/ -lz /, " ")
+              gsub(/ -lfreetype /, " ")
+              gsub(/ -lbrotli[^ ]*/, "")
+              gsub(/ -lharfbuzz /, " ")
               
-              content = content.replace(original_libs, modified_libs)
-              print(f"修改後: {modified_libs[:100]}...")
-          
-          with open('config.mk', 'w') as f:
-              f.write(content)
-          PYTHON_SCRIPT
+              # 插入靜態庫路徑（在 += 後面）
+              gsub(/LIBS \+=/, "LIBS += " static_libs)
+              
+              print
+              next
+          }
+          { print }
+          ' config.mk > config.mk.tmp && mv config.mk.tmp config.mk
           
           echo
           echo "===== 修改後的 LIBS 設定 ====="
@@ -133,7 +114,7 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "===== 檢查執行檔依賴 ====="
-          ldd scummvm.exe 2>&1 | grep -i "dll\|not found" || echo "無外部 DLL 依賴"
+          ldd scummvm.exe 2>&1 | grep -E "dll|not found" || echo "無外部 DLL 依賴"
           echo
           echo "===== 執行檔大小 ====="
           ls -lh scummvm.exe
