@@ -41,11 +41,12 @@ jobs:
 
       - name: 專用引擎配置與靜態編譯
         run: |
-          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
+          export SDL2_CONFIG=/ucrt64/bin/sdl2-config
 
           CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
           LDFLAGS="-Wl,--gc-sections -static -L/ucrt64/lib" \
-          LIBS="-lbz2 -lfreetype -lharfbuzz -lbrotli" \
+          LIBS="-lbz2 -lfreetype -lharfbuzz -lbrotli -lSDL2" \
           ./configure \
               --disable-all-engines \
               --enable-engine=bladerunner \
