@@ -1,0 +1,1 @@
+@start scummvm.exe --config=".\scummvm.ini" --fullscreen --path="." bladerunner-win
