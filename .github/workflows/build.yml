@@ -39,6 +39,23 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
+      - name: 獲取靜態連結所需的庫
+        shell: msys2 {0}
+        run: |
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
+          
+          echo "===== 獲取 freetype2 的靜態連結標誌 ====="
+          pkg-config --static --libs freetype2
+          
+          echo
+          echo "===== 獲取 harfbuzz 的靜態連結標誌 ====="
+          pkg-config --static --libs harfbuzz
+          
+          echo
+          echo "===== 所有靜態庫與依賴 ====="
+          STATIC_LIBS=$(pkg-config --static --libs freetype2 harfbuzz)
+          echo "$STATIC_LIBS"
+
       - name: 專用引擎配置
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
@@ -64,32 +81,39 @@ jobs:
               --enable-static \
               --with-sdl-prefix=/ucrt64
 
-      - name: 修改 config.mk 以強制靜態連結
+      - name: 修改 config.mk 以使用靜態連結
         shell: msys2 {0}
         run: |
+          export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
+          
           echo "===== 原始 LIBS 設定 ====="
           grep "^LIBS" config.mk | head -1
           
           echo
-          echo "===== 備份並修改 ====="
+          echo "===== 備份並獲取靜態庫標誌 ====="
           cp config.mk config.mk.bak
           
-          # 使用 awk 來直接修改
-          awk '
-          BEGIN {
-              static_libs = "/ucrt64/lib/libfreetype.a /ucrt64/lib/libpng16.a /ucrt64/lib/libz.a /ucrt64/lib/libharfbuzz.a"
-          }
+          # 使用 pkg-config 獲取完整的靜態連結標誌
+          STATIC_FREETYPE=$(pkg-config --static --libs freetype2)
+          STATIC_HARFBUZZ=$(pkg-config --static --libs harfbuzz)
+          
+          echo "FreeType2 靜態標誌: $STATIC_FREETYPE"
+          echo "HarfBuzz 靜態標誌: $STATIC_HARFBUZZ"
+          
+          # 使用 awk 修改，移除舊的 -lfreetype, -lharfbuzz 等，加入完整的靜態標誌
+          awk -v ft="$STATIC_FREETYPE" -v hb="$STATIC_HARFBUZZ" '
           /^LIBS/ {
-              # 移除舊的動態庫標誌
+              # 移除舊的單個庫標誌
               gsub(/ -lpng[0-9]* /, " ")
               gsub(/ -lz /, " ")
               gsub(/ -lfreetype /, " ")
               gsub(/ -lbrotli[^ ]*/, "")
               gsub(/ -lharfbuzz /, " ")
+              gsub(/ -lgraphite2 /, " ")
+              gsub(/ -lbz2 /, " ")
               
-              # 插入靜態庫路徑（在 += 後面）
-              gsub(/LIBS \+=/, "LIBS += " static_libs)
-              
+              # 在末尾加入完整的靜態連結標誌
+              $0 = $0 " " ft " " hb " -lbz2 -luuid -ldwrite"
               print
               next
           }
@@ -104,7 +128,8 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "===== config.mk LIBS 行 ====="
-          grep "^LIBS" config.mk
+          grep "^LIBS" config.mk | head -c 300
+          echo ""
 
       - name: Build
         run: |            
@@ -140,6 +165,7 @@ jobs:
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
+
 
   # ======== Linux 專用極簡建置 ========
   build-linux:
