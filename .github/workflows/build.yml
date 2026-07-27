@@ -39,12 +39,12 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: 專用引擎配置與完全靜態編譯
+      - name: 專用引擎配置
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
           export PATH=/ucrt64/bin:$PATH
           export SDL_CONFIG=/ucrt64/bin/sdl2-config
-          export LDFLAGS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -lfreetype -lpng -lz -lbrotli -lharfbuzz -Wl,-Bdynamic"
+          export LDFLAGS="-static-libgcc -static-libstdc++"
           export CFLAGS="-Os"
           export CXXFLAGS="-Os"
     
@@ -64,25 +64,22 @@ jobs:
               --enable-static \
               --with-sdl-prefix=/ucrt64
 
-      - name: Debug pkg-config
+      - name: 修改 Makefile 以強制靜態連結
         shell: msys2 {0}
         run: |
-          echo "===== pkg-config ====="
-          which pkg-config
-          pkg-config --version
+          echo "===== 原始 LIBS 設定 ====="
+          grep "^LIBS" config.mk || true
           
           echo
-          echo "===== freetype pkg-config (靜態) ====="
-          pkg-config --libs --static freetype2
-          pkg-config --libs --static harfbuzz
-          pkg-config --variable pc_path pkg-config
-
-          echo
-          echo "===== config.mk ====="
-          grep -i freetype config.mk || true
-          grep -i harfbuzz config.mk || true
-          grep -i brotli config.mk || true
-          grep -i bz2 config.mk || true
+          echo "===== 添加靜態連結標誌 ====="
+          # 備份原始 config.mk
+          cp config.mk config.mk.bak
+          
+          # 在 LIBS 前面插入靜態連結標誌
+          sed -i 's/^LIBS = /LIBS = -Wl,-Bstatic -lfreetype -lpng -lz -lbrotli -lharfbuzz -Wl,-Bdynamic /' config.mk
+          
+          echo "===== 修改後的 LIBS 設定 ====="
+          grep "^LIBS" config.mk
 
       - name: Debug config.mk
         shell: msys2 {0}
