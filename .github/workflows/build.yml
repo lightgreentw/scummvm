@@ -43,10 +43,10 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "===== 檢查靜態庫位置 ====="
-          find /ucrt64/lib -name "libfreetype.a" -o -name "libpng.a" -o -name "libz.a" -o -name "libbrotli*.a" -o -name "libharfbuzz.a" | sort
+          ls -la /ucrt64/lib/libfreetype.a /ucrt64/lib/libpng16.a /ucrt64/lib/libz.a 2>&1 || echo "檢查完成"
           echo
-          echo "===== 檢查動態庫位置 ====="
-          find /ucrt64/lib -name "libfreetype.dll.a" -o -name "libpng.dll.a" -o -name "libz.dll.a" | sort
+          echo "===== 檢查 brotli 庫 ====="
+          ls -la /ucrt64/lib/libbrotli* 2>&1 | head -20
 
       - name: 專用引擎配置
         run: |
@@ -76,28 +76,54 @@ jobs:
       - name: 修改 config.mk 以強制靜態連結
         shell: msys2 {0}
         run: |
-          echo "===== 原始設定 ====="
-          grep "^LIBS\|^LDFLAGS" config.mk || true
+          echo "===== 原始 LIBS 設定 ====="
+          grep "^LIBS" config.mk | head -1
           
           echo
           echo "===== 備份並修改 ====="
           cp config.mk config.mk.bak
           
-          # 使用完整的靜態庫路徑強制連結
-          STATIC_LIBS="/ucrt64/lib/libfreetype.a /ucrt64/lib/libpng.a /ucrt64/lib/libz.a /ucrt64/lib/libbrotli-static.a /ucrt64/lib/libharfbuzz.a"
+          # 使用 Python 來安全地修改 config.mk
+          python3 << 'PYTHON_SCRIPT'
+          import re
           
-          # 先移除動態庫版本，再添加靜態庫
-          sed -i 's/ -lfreetype / /g; s/ -lpng / /g; s/ -lz / /g; s/ -lbrotli / /g; s/ -lharfbuzz / /g' config.mk
-          sed -i "s/^LIBS = /LIBS = $STATIC_LIBS /" config.mk
+          with open('config.mk', 'r') as f:
+              content = f.read()
           
-          echo "===== 修改後的設定 ====="
-          grep "^LIBS" config.mk
+          # 移除動態庫連結標誌
+          libs_line = re.search(r'^LIBS.*', content, re.MULTILINE)
+          if libs_line:
+              original_libs = libs_line.group(0)
+              print(f"原始: {original_libs[:100]}...")
+              
+              # 移除 -lpng16, -lz, -lfreetype, -lbrotli, -lharfbuzz
+              modified_libs = original_libs
+              modified_libs = re.sub(r' -lpng\d* ', ' ', modified_libs)
+              modified_libs = re.sub(r' -lz ', ' ', modified_libs)
+              modified_libs = re.sub(r' -lfreetype ', ' ', modified_libs)
+              modified_libs = re.sub(r' -lbrotli[^ ]*', '', modified_libs)
+              modified_libs = re.sub(r' -lharfbuzz ', ' ', modified_libs)
+              
+              # 在前面加入靜態庫路徑
+              static_libs = "/ucrt64/lib/libfreetype.a /ucrt64/lib/libpng16.a /ucrt64/lib/libz.a /ucrt64/lib/libharfbuzz.a"
+              modified_libs = modified_libs.replace('LIBS +=', f'LIBS += {static_libs}')
+              
+              content = content.replace(original_libs, modified_libs)
+              print(f"修改後: {modified_libs[:100]}...")
+          
+          with open('config.mk', 'w') as f:
+              f.write(content)
+          PYTHON_SCRIPT
+          
+          echo
+          echo "===== 修改後的 LIBS 設定 ====="
+          grep "^LIBS" config.mk | head -1
 
       - name: Debug config.mk
         shell: msys2 {0}
         run: |
-          echo "===== config.mk 內容 ====="
-          head -50 config.mk | tail -20
+          echo "===== config.mk LIBS 行 ====="
+          grep "^LIBS" config.mk
 
       - name: Build
         run: |            
@@ -107,13 +133,13 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "===== 檢查執行檔依賴 ====="
-          ldd scummvm.exe || true
+          ldd scummvm.exe 2>&1 | grep -i "dll\|not found" || echo "無外部 DLL 依賴"
           echo
           echo "===== 執行檔大小 ====="
           ls -lh scummvm.exe
           echo
           echo "===== 詳細檢查：查詢 DLL 依賴 ====="
-          objdump -p scummvm.exe | grep "DLL Name" || echo "無外部 DLL 依賴"
+          objdump -p scummvm.exe 2>&1 | grep "DLL Name" || echo "無外部 DLL 依賴"
 
       - name: Strip & Optimize
         run: |          
