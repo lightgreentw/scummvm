@@ -39,6 +39,15 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
+      - name: 檢查靜態庫
+        shell: msys2 {0}
+        run: |
+          echo "===== 檢查靜態庫位置 ====="
+          find /ucrt64/lib -name "libfreetype.a" -o -name "libpng.a" -o -name "libz.a" -o -name "libbrotli*.a" -o -name "libharfbuzz.a" | sort
+          echo
+          echo "===== 檢查動態庫位置 ====="
+          find /ucrt64/lib -name "libfreetype.dll.a" -o -name "libpng.dll.a" -o -name "libz.dll.a" | sort
+
       - name: 專用引擎配置
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
@@ -64,31 +73,32 @@ jobs:
               --enable-static \
               --with-sdl-prefix=/ucrt64
 
-      - name: 修改 Makefile 以強制靜態連結
+      - name: 修改 config.mk 以強制靜態連結
         shell: msys2 {0}
         run: |
-          echo "===== 原始 LIBS 設定 ====="
-          grep "^LIBS" config.mk || true
+          echo "===== 原始設定 ====="
+          grep "^LIBS\|^LDFLAGS" config.mk || true
           
           echo
-          echo "===== 添加靜態連結標誌 ====="
-          # 備份原始 config.mk
+          echo "===== 備份並修改 ====="
           cp config.mk config.mk.bak
           
-          # 在 LIBS 前面插入靜態連結標誌
-          sed -i 's/^LIBS = /LIBS = -Wl,-Bstatic -lfreetype -lpng -lz -lbrotli -lharfbuzz -Wl,-Bdynamic /' config.mk
+          # 使用完整的靜態庫路徑強制連結
+          STATIC_LIBS="/ucrt64/lib/libfreetype.a /ucrt64/lib/libpng.a /ucrt64/lib/libz.a /ucrt64/lib/libbrotli-static.a /ucrt64/lib/libharfbuzz.a"
           
-          echo "===== 修改後的 LIBS 設定 ====="
+          # 先移除動態庫版本，再添加靜態庫
+          sed -i 's/ -lfreetype / /g; s/ -lpng / /g; s/ -lz / /g; s/ -lbrotli / /g; s/ -lharfbuzz / /g' config.mk
+          sed -i "s/^LIBS = /LIBS = $STATIC_LIBS /" config.mk
+          
+          echo "===== 修改後的設定 ====="
           grep "^LIBS" config.mk
 
       - name: Debug config.mk
         shell: msys2 {0}
         run: |
-          grep "^FREETYPE" config.mk || true
-          grep "^LIBS" config.mk || true
-          grep "^LDFLAGS" config.mk || true
-          grep "^DEFINES" config.mk || true
-      
+          echo "===== config.mk 內容 ====="
+          head -50 config.mk | tail -20
+
       - name: Build
         run: |            
           make V=1 -j1
@@ -97,7 +107,7 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "===== 檢查執行檔依賴 ====="
-          ldd scummvm.exe || echo "檢查完成"
+          ldd scummvm.exe || true
           echo
           echo "===== 執行檔大小 ====="
           ls -lh scummvm.exe
