@@ -44,25 +44,22 @@ jobs:
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
           export PATH=/ucrt64/bin:$PATH
           export SDL_CONFIG=/ucrt64/bin/sdl2-config
-
-          echo "===== sdl2-config ====="
-          which sdl2-config || which sdl-config || true
-          sdl2-config --version || sdl-config --version || true
-
-          echo "===== pkg-config sdl2 ====="
-          pkg-config --modversion sdl2 || true
-          pkg-config --cflags sdl2 || true
-          pkg-config --libs sdl2 || true
-
-          CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
-          LDFLAGS="-Wl,--gc-sections -static -L/ucrt64/lib" \
-          LIBS="-lbz2 -lfreetype -lharfbuzz -lbrotli -lSDL2" \
+    
+          # Verify SDL2 is properly installed
+          echo "===== SDL2 Verification ====="
+          which sdl2-config
+          sdl2-config --version
+          sdl2-config --cflags
+          sdl2-config --libs
+          pkg-config --modversion sdl2
+    
           ./configure \
               --disable-all-engines \
               --enable-engine=bladerunner \
               --enable-freetype2 \
               --disable-debug \
-              --enable-static
+              --enable-static \
+              --with-sdl-prefix=/ucrt64
 
       - name: Debug pkg-config
         shell: msys2 {0}
