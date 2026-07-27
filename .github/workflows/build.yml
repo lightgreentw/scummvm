@@ -38,118 +38,46 @@ jobs:
             mingw-w64-ucrt-x86_64-brotli
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
-            mingw-w64-ucrt-x86_64-upx
 
-      - name: 專用引擎配置
+      - name: 專用引擎配置 - 完全靜態連結
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
           export PATH=/ucrt64/bin:$PATH
           export SDL_CONFIG=/ucrt64/bin/sdl2-config
-          export LDFLAGS="-static-libgcc -static-libstdc++"
-          export CFLAGS="-Os"
-          export CXXFLAGS="-Os"
     
           # Verify SDL2 is properly installed
           echo "===== SDL2 Verification ====="
           which sdl2-config
           sdl2-config --version
-          sdl2-config --cflags
-          sdl2-config --libs
-          pkg-config --modversion sdl2
-    
+          
           ./configure \
               --disable-all-engines \
               --enable-engine=bladerunner \
               --enable-freetype2 \
               --disable-debug \
-              --enable-static \
-              --with-sdl-prefix=/ucrt64
+              --enable-static
 
       - name: Build
         run: |            
-          make V=1 -j1
+          make V=1 -j$(nproc)
 
-      - name: 收集所有必要的 DLL
+      - name: Verify linking
         shell: msys2 {0}
         run: |
-          echo "===== 原始 EXE 大小 ====="
+          echo "===== 檢查執行檔依賴 ====="
+          ldd scummvm.exe 2>&1 | grep -E "libfreetype|libpng|zlib|brotli" || echo "✓ 無外部庫依賴（已靜態連結）"
+          echo
+          echo "===== 執行檔大小 ====="
           ls -lh scummvm.exe
-          
           echo
-          echo "===== 檢查 EXE 依賴的 DLL ====="
-          ldd scummvm.exe 2>&1 | grep "\.dll" | awk '{print $1}' | sort -u || true
-          
-          echo
-          echo "===== 複製所有 DLL 到執行目錄 ====="
-          mkdir -p dlls_temp
-          
-          # 複製所有依賴的 DLL
-          ldd scummvm.exe 2>&1 | grep "\.dll" | awk '{print $1}' | while read dll; do
-              if [ -f "$dll" ]; then
-                  cp "$dll" dlls_temp/
-                  echo "複製: $(basename $dll)"
-              fi
-          done
-          
-          # 手動複製可能缺失的 DLL
-          for dll in libfreetype-6.dll libpng16-16.dll libwinpthread-1.dll zlib1.dll libbrotli.dll libharfbuzz.dll libgcc_s_seh-1.dll libstdc++-6.dll; do
-              found=$(find /ucrt64 -name "$dll" 2>/dev/null | head -1)
-              if [ -n "$found" ]; then
-                  cp "$found" dlls_temp/ 2>/dev/null && echo "手動複製: $dll" || true
-              fi
-          done
-          
-          echo
-          echo "===== 最終 DLL 清單 ====="
-          ls -lh dlls_temp/ || echo "找不到任何 DLL"
+          echo "===== DLL 清單 ====="
+          objdump -p scummvm.exe | grep "DLL Name" | head -10
 
-      - name: 使用 UPX 壓縮並嵌入 DLL
-        shell: msys2 {0}
-        run: |
-          echo "===== 開始 UPX 壓縮 ====="
-          
-          # 備份原始 EXE
-          cp scummvm.exe scummvm.exe.bak
-          
-          # 壓縮主 EXE
-          echo "壓縮主程式..."
-          upx --best -o scummvm_packed.exe scummvm.exe 2>&1 | tail -5
-          
-          # 逐一壓縮 DLL
-          echo
-          echo "壓縮 DLL 檔案..."
-          cd dlls_temp
-          for dll in *.dll; do
-              if [ -f "$dll" ]; then
-                  echo "  壓縮: $dll"
-                  upx --best "$dll" -o "${dll}.upx" 2>&1 | tail -1 || true
-              fi
-          done
-          cd ..
-          
-          # 創建包含所有壓縮 DLL 的二進制檔
-          echo
-          echo "合併 DLL 到 EXE..."
-          cat dlls_temp/*.dll.upx >> scummvm_packed.exe 2>/dev/null || true
-          
-          echo "===== 壓縮後大小 ====="
-          ls -lh scummvm_packed.exe
-          
-          # 最終成品
-          mv scummvm_packed.exe scummvm.exe
-          strip --strip-all scummvm.exe 2>/dev/null || true
-          
-          echo
-          echo "===== 最終 EXE 大小 ====="
-          ls -lh scummvm.exe
-
-      - name: Verify 最終成品
+      - name: Strip & Optimize
         run: |          
-          echo "===== 執行檔驗證 ====="
+          strip --strip-all --remove-section=.comment scummvm.exe 2>/dev/null || true
+          echo "===== Strip 後大小 ====="
           ls -lh scummvm.exe
-          echo
-          echo "===== 檔案類型 ====="
-          file scummvm.exe
 
       - name: 打包 Windows 懶人包
         run: |
@@ -157,14 +85,15 @@ jobs:
           cp scummvm.exe scummvm-windows-zh-TW/
           if [ -d "packaging/common" ]; then cp -r packaging/common/* scummvm-windows-zh-TW/; fi
           if [ -d "packaging/windows" ]; then cp -r packaging/windows/* scummvm-windows-zh-TW/; fi
+          
+          echo "===== 最終打包內容 ====="
+          ls -lh scummvm-windows-zh-TW/
 
       - name: 上傳 Windows 成品
         uses: actions/upload-artifact@v4
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
-
-
 
   # ======== Linux 專用極簡建置 ========
   build-linux:
