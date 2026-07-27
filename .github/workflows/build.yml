@@ -42,7 +42,17 @@ jobs:
       - name: 專用引擎配置與靜態編譯
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
-          export SDL2_CONFIG=/ucrt64/bin/sdl2-config
+          export PATH=/ucrt64/bin:$PATH
+          export SDL_CONFIG=/ucrt64/bin/sdl2-config
+
+          echo "===== sdl2-config ====="
+          which sdl2-config || which sdl-config || true
+          sdl2-config --version || sdl-config --version || true
+
+          echo "===== pkg-config sdl2 ====="
+          pkg-config --modversion sdl2 || true
+          pkg-config --cflags sdl2 || true
+          pkg-config --libs sdl2 || true
 
           CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
           LDFLAGS="-Wl,--gc-sections -static -L/ucrt64/lib" \
