@@ -32,12 +32,21 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkgconf
-            mingw-w64-ucrt-x86_64-SDL2-static
+            mingw-w64-ucrt-x86_64-SDL2
             mingw-w64-ucrt-x86_64-freetype
             mingw-w64-ucrt-x86_64-harfbuzz
             mingw-w64-ucrt-x86_64-brotli
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
+
+      - name: Debug available pacman packages for SDL2
+        shell: msys2 {0}
+        run: |
+          echo "=== pacman package search: SDL2 ==="
+          pacman -Ss mingw | grep -i sdl2 || true
+          echo
+          echo "=== installed mingw packages ==="
+          pacman -Q | grep sdl2 || true            
 
       - name: 專用引擎配置與靜態編譯
         run: |
@@ -122,7 +131,7 @@ jobs:
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
-          
+
   # ======== Linux 專用極簡建置 ========
   build-linux:
     name: Build for Linux
