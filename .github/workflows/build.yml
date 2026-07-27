@@ -39,15 +39,6 @@ jobs:
             mingw-w64-ucrt-x86_64-bzip2
             mingw-w64-ucrt-x86_64-zlib
 
-      - name: Debug available pacman packages for SDL2
-        shell: msys2 {0}
-        run: |
-          echo "=== pacman package search: SDL2 ==="
-          pacman -Ss mingw | grep -i sdl2 || true
-          echo
-          echo "=== installed mingw packages ==="
-          pacman -Q | grep sdl2 || true            
-
       - name: 專用引擎配置與靜態編譯
         run: |
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
@@ -69,7 +60,6 @@ jobs:
               --disable-debug \
               --enable-static \
               --with-sdl-prefix=/ucrt64 \
-              --enable-static-lib \
               LDFLAGS="-static-libgcc -static-libstdc++"
 
       - name: Debug pkg-config
@@ -80,7 +70,7 @@ jobs:
           pkg-config --version
           
           echo
-          echo "===== freetype pkg-config ====="
+          echo "===== freetype pkg-config (靜態) ====="
           pkg-config --libs --static freetype2
           pkg-config --libs --static harfbuzz
           pkg-config --variable pc_path pkg-config
@@ -104,7 +94,7 @@ jobs:
         run: |            
           make V=1 -j1
 
-      - name: Verify Static Linking
+      - name: Verify linking
         shell: msys2 {0}
         run: |
           echo "===== 檢查執行檔依賴 ====="
@@ -113,7 +103,7 @@ jobs:
           echo "===== 執行檔大小 ====="
           ls -lh scummvm.exe
 
-      - name: Strip
+      - name: Strip & Optimize
         run: |          
           strip --strip-all --remove-section=.comment scummvm.exe
           echo "===== Strip 後大小 ====="
@@ -131,7 +121,7 @@ jobs:
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
-
+          
   # ======== Linux 專用極簡建置 ========
   build-linux:
     name: Build for Linux
