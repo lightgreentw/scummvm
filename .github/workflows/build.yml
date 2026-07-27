@@ -32,7 +32,7 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkgconf
-            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2-static
             mingw-w64-ucrt-x86_64-freetype
             mingw-w64-ucrt-x86_64-harfbuzz
             mingw-w64-ucrt-x86_64-brotli
@@ -59,7 +59,9 @@ jobs:
               --enable-freetype2 \
               --disable-debug \
               --enable-static \
-              --with-sdl-prefix=/ucrt64
+              --with-sdl-prefix=/ucrt64 \
+              --enable-static-lib \
+              LDFLAGS="-static-libgcc -static-libstdc++"
 
       - name: Debug pkg-config
         shell: msys2 {0}
@@ -70,8 +72,8 @@ jobs:
           
           echo
           echo "===== freetype pkg-config ====="
-          pkg-config --libs freetype2
           pkg-config --libs --static freetype2
+          pkg-config --libs --static harfbuzz
           pkg-config --variable pc_path pkg-config
 
           echo
@@ -86,15 +88,27 @@ jobs:
         run: |
           grep "^FREETYPE" config.mk || true
           grep "^LIBS" config.mk || true
+          grep "^LDFLAGS" config.mk || true
           grep "^DEFINES" config.mk || true
       
       - name: Build
         run: |            
           make V=1 -j1
 
+      - name: Verify Static Linking
+        shell: msys2 {0}
+        run: |
+          echo "===== 檢查執行檔依賴 ====="
+          ldd scummvm.exe || true
+          echo
+          echo "===== 執行檔大小 ====="
+          ls -lh scummvm.exe
+
       - name: Strip
         run: |          
-          strip --strip-unneeded scummvm.exe
+          strip --strip-all --remove-section=.comment scummvm.exe
+          echo "===== Strip 後大小 ====="
+          ls -lh scummvm.exe
 
       - name: 打包 Windows 懶人包
         run: |
@@ -108,7 +122,7 @@ jobs:
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
-
+          
   # ======== Linux 專用極簡建置 ========
   build-linux:
     name: Build for Linux
