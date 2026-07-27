@@ -44,8 +44,8 @@ jobs:
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
 
           CXXFLAGS="-Os -ffunction-sections -fdata-sections" \
-          LDFLAGS="-Wl,--gc-sections -static" \
-          LIBS="-lbz2" \
+          LDFLAGS="-Wl,--gc-sections -static -L/ucrt64/lib" \
+          LIBS="-lbz2 -lfreetype -lharfbuzz -lbrotli" \
           ./configure \
               --disable-all-engines \
               --enable-engine=bladerunner \
