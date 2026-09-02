@@ -280,18 +280,65 @@ jobs:
           sdl2-config --version
           pkg-config --modversion sdl2
 
+      - name: 修補 sdl2-config（Homebrew 版不支援 --static-libs）
+        run: |
+          # ScummVM 的 macOS 編譯預設假設要用「靜態版」libSDL2，configure 會呼叫
+          # sdl2-config --static-libs 來取得靜態連結旗標（見官方 Wiki:
+          # Compiling ScummVM/macOS）。但 Homebrew 裝的 sdl2 只有動態 .dylib，
+          # 沒有附靜態 .a，所以它的 sdl2-config 腳本根本沒有實作 --static-libs，
+          # 一被呼叫就印出「Usage: sdl2-config ...」並失敗，導致
+          # 「Checking for SDL... no」，configure 直接中止。
+          #
+          # 我們的策略本來就是動態連結 + dylibbundler 把 dylib 收進 .app，
+          # 所以做一個 wrapper，把任何 --static-libs 呼叫都轉成 --libs
+          # （回傳動態連結旗標），其餘參數原樣轉發給真正的 sdl2-config。
+          REAL_SDL2_CONFIG="$(command -v sdl2-config)"
+          mkdir -p "$HOME/bin"
+          WRAPPER="$HOME/bin/sdl2-config"
+          {
+            printf '%s\n' '#!/bin/bash'
+            printf 'REAL="%s"\n' "$REAL_SDL2_CONFIG"
+            printf '%s\n' 'ARGS=()'
+            printf '%s\n' 'HAS_LIBS=0'
+            printf '%s\n' 'for a in "$@"; do'
+            printf '%s\n' '  if [ "$a" = "--static-libs" ]; then'
+            printf '%s\n' '    a="--libs"'
+            printf '%s\n' '  fi'
+            printf '%s\n' '  if [ "$a" = "--libs" ]; then'
+            printf '%s\n' '    if [ "$HAS_LIBS" = "1" ]; then continue; fi'
+            printf '%s\n' '    HAS_LIBS=1'
+            printf '%s\n' '  fi'
+            printf '%s\n' '  ARGS+=("$a")'
+            printf '%s\n' 'done'
+            printf '%s\n' 'exec "$REAL" "${ARGS[@]}"'
+          } > "$WRAPPER"
+          chmod +x "$WRAPPER"
+
+          echo "===== wrapper 內容確認（第一行必須是 #!/bin/bash，開頭不能有空白） ====="
+          cat -A "$WRAPPER" | head -3
+
+          echo "===== 驗證 wrapper ====="
+          "$WRAPPER" --version
+          "$WRAPPER" --cflags
+          "$WRAPPER" --static-libs
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
       - name: 專用引擎配置與編譯瘦身
         env:
           PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
-          SDL_CONFIG: /opt/homebrew/bin/sdl2-config
         run: |
           # 注意：macOS 走動態連結（用 dylibbundler 把 dylib 收進 .app），
           # 不要把 PKG_CONFIG 設成 "pkg-config --static"（帶空白）——
           # sdl2-config 等腳本會把 $PKG_CONFIG 當成單一可執行檔名稱直接
           # 呼叫，不會做參數分詞，帶空白會導致找不到指令、SDL2 偵測失敗
           # （Usage: sdl2-config ... / Checking for SDL... no / configure 中止）。
+          # SDL_CONFIG 不再手動指定絕對路徑，讓 configure 從 PATH 找到
+          # 上一步放進 $HOME/bin 的 wrapper（$GITHUB_PATH 已排在最前面）。
           export CFLAGS="-Os"
           export CXXFLAGS="-Os"
+
+          which sdl2-config
+          sdl2-config --static-libs
 
           ./configure \
             --disable-all-engines \
