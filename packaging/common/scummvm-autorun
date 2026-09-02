@@ -1,0 +1,5 @@
+--initial-cfg=./scummvm.ini
+--path=.
+--savepath=./Saved games
+--fullscreen
+bladerunner-cht

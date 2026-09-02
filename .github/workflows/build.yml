@@ -1,3 +1,35 @@
+# ============================================================================
+# 打包需求：本 workflow 只提供 scummvm 執行檔本身，遊戲資料由玩家自行匯入。
+# 以下中文化專案所需的資源檔，請放在 repo 的 packaging/common/ 目錄下，
+# 建置時會自動複製到「與執行檔同一個目錄」（Windows 懶人包、Linux 懶人包、
+# Linux AppImage、macOS .app 都一樣），玩家才能直接雙擊執行：
+#   ACTORS.TRE
+#   CLUES.TRE
+#   CLUETYPE.TRE
+#   CRIMES.TRE
+#   DLGMENU.TRE
+#   HELP.TRE
+#   KIA.TRE
+#   OPTIONS.TRE
+#   SPINDEST.TRE
+#   SUBTITLES.MIX
+#   VK.TRE
+#   scummvm.ini
+#   scummvm-autorun
+# 若某平台需要不同內容，改放到 packaging/windows、packaging/linux、
+# packaging/macos 對應目錄即可覆蓋（會在複製完 common 之後才複製，會覆蓋同名檔）。
+#
+# 例外：macOS 打包成 .app bundle 時，資源檔（含 scummvm.ini、scummvm-autorun）
+# 依 ScummVM 官方文件規定要放在 ScummVM.app/Contents/Resources/，而不是跟
+# 執行檔同層的 Contents/MacOS/（該層只放執行檔本身）。scummvm-autorun 內容中
+# 的路徑請一律使用正斜線 "/"（不要用 Windows 的反斜線 "\"），例如：
+#   --initial-cfg=./scummvm.ini
+#   --path=.
+#   --savepath=./Saved games
+#   --fullscreen
+# 這份 autorun 內容三平台可共用同一份，放在 packaging/common/ 即可。
+# ============================================================================
+
 name: Build Dedicated Blade Runner ScummVM
 
 on:
@@ -6,9 +38,9 @@ on:
   pull_request:
     branches: [ "zh-tw-bladerunner" ]
   workflow_dispatch:
-    
+
 jobs:
-  # ======== Windows 專用極簡建置 (UCRT64) ========
+  # ======== Windows 專用極簡建置 (UCRT64，完全靜態單一 EXE) ========
   build-windows:
     name: Build for Windows
     runs-on: windows-latest
@@ -16,7 +48,7 @@ jobs:
     defaults:
       run:
         shell: msys2 {0}
-     
+
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
@@ -41,41 +73,47 @@ jobs:
 
       - name: 專用引擎配置 - 完全靜態連結
         run: |
+          export PKG_CONFIG="pkg-config --static"
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig:/ucrt64/share/pkgconfig
           export PATH=/ucrt64/bin:$PATH
           export SDL_CONFIG=/ucrt64/bin/sdl2-config
-    
-          # Verify SDL2 is properly installed
+          export CFLAGS="-Os -ffunction-sections -fdata-sections"
+          export CXXFLAGS="-Os -ffunction-sections -fdata-sections"
+          export LDFLAGS="-static -static-libgcc -static-libstdc++ -Wl,--gc-sections"
+
           echo "===== SDL2 Verification ====="
           which sdl2-config
           sdl2-config --version
-          
+
           ./configure \
               --disable-all-engines \
               --enable-engine=bladerunner \
               --enable-freetype2 \
+              --enable-static \
               --disable-debug \
-              --enable-static
+              --disable-eventrecorder \
+              --disable-text-console \
+              --enable-release
+
+          # 保險起見，把 pkg-config --static 解析出的完整依賴鏈（含 harfbuzz/brotli/bz2 等）
+          # 直接補進 config.mk，避免未來 MSYS2 套件相依鏈變動時漏連結。
+          echo "LIBS += $(pkg-config --static --libs freetype2 sdl2)" >> config.mk
 
       - name: Build
-        run: |            
+        run: |
           make V=1 -j$(nproc)
 
       - name: Verify linking
         shell: msys2 {0}
         run: |
-          echo "===== 檢查執行檔依賴 ====="
-          ldd scummvm.exe 2>&1 | grep -E "libfreetype|libpng|zlib|brotli" || echo "✓ 無外部庫依賴（已靜態連結）"
+          echo "===== DLL 清單（應只剩系統 DLL） ====="
+          objdump -p scummvm.exe | grep "DLL Name"
           echo
-          echo "===== 執行檔大小 ====="
-          ls -lh scummvm.exe
-          echo
-          echo "===== DLL 清單 ====="
-          objdump -p scummvm.exe | grep "DLL Name" | head -10
+          echo "若清單中出現 libfreetype-6.dll / libpng16-16.dll / libbrotli*.dll / libgcc_s_seh-1.dll / libstdc++-6.dll，代表靜態連結未完全生效"
 
       - name: Strip & Optimize
-        run: |          
-          strip --strip-all --remove-section=.comment scummvm.exe 2>/dev/null || true
+        run: |
+          strip -s scummvm.exe
           echo "===== Strip 後大小 ====="
           ls -lh scummvm.exe
 
@@ -85,7 +123,7 @@ jobs:
           cp scummvm.exe scummvm-windows-zh-TW/
           if [ -d "packaging/common" ]; then cp -r packaging/common/* scummvm-windows-zh-TW/; fi
           if [ -d "packaging/windows" ]; then cp -r packaging/windows/* scummvm-windows-zh-TW/; fi
-          
+
           echo "===== 最終打包內容 ====="
           ls -lh scummvm-windows-zh-TW/
 
@@ -95,11 +133,11 @@ jobs:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
 
-  # ======== Linux 專用極簡建置 ========
+  # ======== Linux 專用極簡建置 (動態連結系統 .so + 打包成 AppImage) ========
   build-linux:
     name: Build for Linux
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
@@ -107,16 +145,31 @@ jobs:
       - name: 安裝 Linux 系統相依套件
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ make pkg-config libsdl2-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev libogg-dev libvorbis-dev libtheora-dev libflac-dev
+          sudo apt-get install -y \
+            g++ make pkg-config \
+            libsdl2-dev libpng-dev libjpeg-dev libfreetype-dev zlib1g-dev \
+            libogg-dev libvorbis-dev libtheora-dev libflac-dev \
+            libharfbuzz-dev libbrotli-dev libbz2-dev \
+            wget fuse
 
       - name: 專用引擎配置與編譯瘦身
         run: |
-          CXXFLAGS="-Os" ./configure \
+          # 注意：Linux 不要加 -static，會撞上 glibc 静態連結問題
+          # （常見錯誤：cannot find -lglibc / cannot find -lpthread）
+          export PKG_CONFIG="pkg-config --static"
+          export CFLAGS="-Os -ffunction-sections -fdata-sections"
+          export CXXFLAGS="-Os -ffunction-sections -fdata-sections"
+
+          ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
             --enable-freetype2 \
+            --enable-static \
             --disable-debug \
-            --enable-static
+            --disable-eventrecorder \
+            --disable-text-console \
+            --enable-release
+
           make -j$(nproc)
           strip scummvm
 
@@ -126,19 +179,72 @@ jobs:
           cp scummvm scummvm-linux-zh-TW/
           if [ -d "packaging/common" ]; then cp -r packaging/common/* scummvm-linux-zh-TW/; fi
           if [ -d "packaging/linux" ]; then cp -r packaging/linux/* scummvm-linux-zh-TW/; fi
-          chmod +x scummvm-linux-zh-TW/scummvm scummvm-linux-zh-TW/runme.sh
+          chmod +x scummvm-linux-zh-TW/scummvm
+          if [ -f scummvm-linux-zh-TW/runme.sh ]; then chmod +x scummvm-linux-zh-TW/runme.sh; fi
 
-      - name: 上傳 Linux 成品
+      - name: 上傳 Linux 懶人包成品
         uses: actions/upload-artifact@v4
         with:
           name: scummvm-linux-zh-TW
           path: scummvm-linux-zh-TW/
 
-  # ======== macOS 專用極簡建置 ========
+      - name: 建置 AppImage（單一可攜檔，自帶依賴庫）
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/latest/download/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/latest/download/linuxdeploy-plugin-appimage-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-appimage-x86_64.AppImage
+
+          mkdir -p AppDir/usr/bin
+          cp scummvm AppDir/usr/bin/
+
+          # 資源檔（TRE/MIX/ini/autorun）必須跟執行檔放在同一目錄，玩家才能直接執行
+          if [ -d "packaging/common" ]; then cp -r packaging/common/* AppDir/usr/bin/; fi
+          if [ -d "packaging/linux" ]; then cp -r packaging/linux/* AppDir/usr/bin/; fi
+
+          mkdir -p AppDir/usr/share/applications
+          cat > AppDir/usr/share/applications/scummvm.desktop << EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Blade Runner
+          Exec=scummvm
+          Icon=scummvm
+          Categories=Game;
+          EOF
+
+          # 若專案有提供圖示則使用，否則產生一個佔位圖示避免 linuxdeploy 失敗
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          if [ -f "icons/scummvm.png" ]; then
+            cp icons/scummvm.png AppDir/usr/share/icons/hicolor/256x256/apps/scummvm.png
+          else
+            echo "⚠ 未找到 icons/scummvm.png，使用產生的佔位圖示"
+            sudo apt-get install -y imagemagick
+            convert -size 256x256 xc:gray AppDir/usr/share/icons/hicolor/256x256/apps/scummvm.png
+          fi
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/scummvm.png AppDir/scummvm.png
+          cp AppDir/usr/share/applications/scummvm.desktop AppDir/scummvm.desktop
+
+          export NO_STRIP=1
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/scummvm \
+            --desktop-file AppDir/scummvm.desktop \
+            --icon-file AppDir/scummvm.png \
+            --output appimage
+
+          mv ScummVM*.AppImage BladeRunner-x86_64.AppImage || mv Blade*.AppImage BladeRunner-x86_64.AppImage || true
+          ls -lh *.AppImage
+
+      - name: 上傳 Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: BladeRunner-linux-AppImage
+          path: "*.AppImage"
+
+  # ======== macOS 專用極簡建置 (動態連結 + 打包成 .app Bundle) ========
   build-macos:
     name: Build for macOS
     runs-on: macos-latest
-    
+
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
@@ -149,6 +255,8 @@ jobs:
               sdl2 \
               pkg-config \
               freetype \
+              harfbuzz \
+              brotli \
               libpng \
               jpeg \
               libogg \
@@ -156,42 +264,90 @@ jobs:
               theora \
               flac \
               bzip2 \
-              zlib  
+              zlib \
+              dylibbundler
 
       - name: Check SDL
         run: |
           which sdl2-config
           sdl2-config --version
-          sdl2-config --cflags
-          sdl2-config --libs
-
           pkg-config --modversion sdl2
-          pkg-config --cflags sdl2
-          pkg-config --libs sdl2
 
       - name: 專用引擎配置與編譯瘦身
         env:
+          PKG_CONFIG: "pkg-config --static"
           PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
           SDL_CONFIG: /opt/homebrew/bin/sdl2-config
         run: |
+          export CFLAGS="-Os"
+          export CXXFLAGS="-Os"
+
           ./configure \
             --disable-all-engines \
             --enable-engine=bladerunner \
             --enable-freetype2 \
-            --disable-debug
+            --enable-static \
+            --disable-debug \
+            --disable-eventrecorder \
+            --disable-text-console \
+            --enable-release
+
           make -j$(sysctl -n hw.ncpu)
           strip scummvm
 
-      - name: 打包 macOS 懶人包
+      - name: 建立 .app Bundle 並收進所有 dylib 依賴
         run: |
-          mkdir scummvm-macos-zh-TW
-          cp scummvm scummvm-macos-zh-TW/
-          if [ -d "packaging/common" ]; then cp -r packaging/common/* scummvm-macos-zh-TW/; fi
-          if [ -d "packaging/macos" ]; then cp -r packaging/macos/* scummvm-macos-zh-TW/; fi
-          chmod +x scummvm-macos-zh-TW/scummvm scummvm-macos-zh-TW/runme.sh
+          APP=BladeRunner.app
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+          mkdir -p "$APP/Contents/Frameworks"
 
-      - name: 上傳 macOS 成品
+          cp scummvm "$APP/Contents/MacOS/"
+
+          cat > "$APP/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>scummvm</string>
+            <key>CFBundleIdentifier</key>
+            <string>org.scummvm.bladerunner</string>
+            <key>CFBundleName</key>
+            <string>Blade Runner</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+          </dict>
+          </plist>
+          EOF
+
+          # 注意：.app bundle 是 macOS 特例，跟 Windows/Linux 不同。
+          # ScummVM 官方文件指出，當以 .app bundle 形式建置時，scummvm-autorun 與
+          # scummvm.ini 必須放在 ScummVM.app/Contents/Resources/，而不是跟執行檔
+          # 同層的 Contents/MacOS/（Contents/MacOS/ 只放執行檔本身）。
+          # 資料檔（TRE/MIX）也一併放進 Resources/，並讓 scummvm-autorun 用
+          # --path=. 指向這個目錄。
+          if [ -d "packaging/common" ]; then
+            cp -r packaging/common/* "$APP/Contents/Resources/"
+          fi
+          if [ -d "packaging/macos" ]; then
+            cp -r packaging/macos/* "$APP/Contents/Resources/"
+          fi
+
+          # 自動掃描並複製所有 Homebrew dylib 依賴進 Frameworks，並修正 rpath
+          dylibbundler -od -b \
+            -x "$APP/Contents/MacOS/scummvm" \
+            -d "$APP/Contents/Frameworks/" \
+            -p "@executable_path/../Frameworks/"
+
+          echo "===== 打包後依賴檢查 ====="
+          otool -L "$APP/Contents/MacOS/scummvm"
+
+      - name: 上傳 macOS .app 成品
         uses: actions/upload-artifact@v4
         with:
-          name: scummvm-macos-zh-TW
-          path: scummvm-macos-zh-TW/
+          name: BladeRunner-macos-app
+          path: BladeRunner.app
