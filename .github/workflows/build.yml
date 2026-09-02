@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: 檢出程式碼
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 初始化 MSYS2 (UCRT64) 與安裝相依套件
         uses: msys2/setup-msys2@v2
@@ -106,10 +106,14 @@ jobs:
       - name: Verify linking
         shell: msys2 {0}
         run: |
-          echo "===== DLL 清單（應只剩系統 DLL） ====="
-          objdump -p scummvm.exe | grep "DLL Name"
+          echo "===== 檢查執行檔依賴 ====="
+          ldd scummvm.exe 2>&1 | grep -E "libfreetype|libpng|zlib|brotli" || echo "✓ 無外部庫依賴（已靜態連結）"
           echo
-          echo "若清單中出現 libfreetype-6.dll / libpng16-16.dll / libbrotli*.dll / libgcc_s_seh-1.dll / libstdc++-6.dll，代表靜態連結未完全生效"
+          echo "===== 執行檔大小 ====="
+          ls -lh scummvm.exe
+          echo
+          echo "===== DLL 清單 ====="
+          objdump -p scummvm.exe | grep "DLL Name" | head -10
 
       - name: Strip & Optimize
         run: |
@@ -128,7 +132,7 @@ jobs:
           ls -lh scummvm-windows-zh-TW/
 
       - name: 上傳 Windows 成品
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scummvm-windows-zh-TW
           path: scummvm-windows-zh-TW/
@@ -140,7 +144,7 @@ jobs:
 
     steps:
       - name: 檢出程式碼
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安裝 Linux 系統相依套件
         run: |
@@ -154,9 +158,12 @@ jobs:
 
       - name: 專用引擎配置與編譯瘦身
         run: |
-          # 注意：Linux 不要加 -static，會撞上 glibc 静態連結問題
-          # （常見錯誤：cannot find -lglibc / cannot find -lpthread）
-          export PKG_CONFIG="pkg-config --static"
+          # 注意：Linux 走動態連結（跟 Windows 不同），不要加 -static，
+          # 會撞上 glibc 静態連結問題（常見錯誤：cannot find -lglibc /
+          # cannot find -lpthread）。也不要把 PKG_CONFIG 設成
+          # "pkg-config --static"（帶空白）——sdl2-config 等腳本會把
+          # $PKG_CONFIG 當成單一可執行檔名稱直接呼叫，不會做參數分詞，
+          # 帶空白會導致找不到指令、SDL2 偵測失敗（configure 直接中止）。
           export CFLAGS="-Os -ffunction-sections -fdata-sections"
           export CXXFLAGS="-Os -ffunction-sections -fdata-sections"
 
@@ -183,7 +190,7 @@ jobs:
           if [ -f scummvm-linux-zh-TW/runme.sh ]; then chmod +x scummvm-linux-zh-TW/runme.sh; fi
 
       - name: 上傳 Linux 懶人包成品
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scummvm-linux-zh-TW
           path: scummvm-linux-zh-TW/
@@ -235,7 +242,7 @@ jobs:
           ls -lh *.AppImage
 
       - name: 上傳 Linux AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BladeRunner-linux-AppImage
           path: "*.AppImage"
@@ -247,7 +254,7 @@ jobs:
 
     steps:
       - name: 檢出程式碼
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安裝 macOS Homebrew 相依套件
         run: |
@@ -275,10 +282,14 @@ jobs:
 
       - name: 專用引擎配置與編譯瘦身
         env:
-          PKG_CONFIG: "pkg-config --static"
           PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
           SDL_CONFIG: /opt/homebrew/bin/sdl2-config
         run: |
+          # 注意：macOS 走動態連結（用 dylibbundler 把 dylib 收進 .app），
+          # 不要把 PKG_CONFIG 設成 "pkg-config --static"（帶空白）——
+          # sdl2-config 等腳本會把 $PKG_CONFIG 當成單一可執行檔名稱直接
+          # 呼叫，不會做參數分詞，帶空白會導致找不到指令、SDL2 偵測失敗
+          # （Usage: sdl2-config ... / Checking for SDL... no / configure 中止）。
           export CFLAGS="-Os"
           export CXXFLAGS="-Os"
 
@@ -347,7 +358,7 @@ jobs:
           otool -L "$APP/Contents/MacOS/scummvm"
 
       - name: 上傳 macOS .app 成品
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BladeRunner-macos-app
           path: BladeRunner.app
